@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Hướng Dẫn - F-LostFound{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <div class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Hướng Dẫn Sử Dụng</h1>
+        <p class="text-gray-500">Quy trình đơn giản để tìm lại đồ thất lạc tại FPT University</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        <!-- Section: I LOST something -->
+        <div class="bg-white rounded-2xl shadow-md border-t-4 border-orange-500 overflow-hidden">
+            <div class="p-6">
+                <div
+                    class="flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full text-orange-600 text-2xl mb-4 mx-auto">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Tôi Bị Mất Đồ</h2>
+
+                <ul class="space-y-6">
+                    <li class="flex">
+                        <div
+                            class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white font-bold mr-4">
+                            1</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Tìm kiếm trước</h3>
+                            <p class="text-sm text-gray-600">Sử dụng thanh tìm kiếm trên trang chủ để xem có ai nhặt
+                                được đồ của bạn chưa.</p>
+                        </div>
+                    </li>
+                    <li class="flex">
+                        <div
+                            class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white font-bold mr-4">
+                            2</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Đăng tin tìm đồ</h3>
+                            <p class="text-sm text-gray-600">Nếu chưa thấy, hãy nhấn nút "Đăng Tin" và chọn loại "Tìm Đồ
+                                (Lost)". Mô tả càng chi tiết càng tốt.</p>
+                        </div>
+                    </li>
+                    <li class="flex">
+                        <div
+                            class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-orange-500 text-white font-bold mr-4">
+                            3</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Chờ & Nhận tin</h3>
+                            <p class="text-sm text-gray-600">Hệ thống sẽ thông báo khi có người bình luận hoặc nhắn tin
+                                cho bạn.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section: I FOUND something -->
+        <div class="bg-white rounded-2xl shadow-md border-t-4 border-green-500 overflow-hidden">
+            <div class="p-6">
+                <div
+                    class="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full text-green-600 text-2xl mb-4 mx-auto">
+                    <i class="fas fa-hand-holding-heart"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Tôi Nhặt Được Đồ</h2>
+
+                <ul class="space-y-6">
+                    <li class="flex">
+                        <div
+                            class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white font-bold mr-4">
+                            1</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Đăng tin nhặt được</h3>
+                            <p class="text-sm text-gray-600">Nhấn "Đăng Tin" và chọn "Nhặt Được (Found)". Hãy chụp ảnh
+                                vật phẩm (nếu có thể).</p>
+                        </div>
+                    </li>
+                    <li class="flex">
+                        <div
+                            class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white font-bold mr-4">
+                            2</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Bảo mật thông tin</h3>
+                            <p class="text-sm text-gray-600">Bạn có thể che bớt thông tin nhạy cảm (như số thẻ SV, căn
+                                cước) để người mất phải xác minh.</p>
+                        </div>
+                    </li>
+                    <li class="flex">
+                        <div
+                            class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white font-bold mr-4">
+                            3</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Trao trả</h3>
+                            <p class="text-sm text-gray-600">Hẹn gặp tại nơi công cộng trong trường (ví dụ: Phòng bảo
+                                vệ, Thư viện) để trao trả.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Safety Tips -->
+    <div class="bg-blue-50 border border-blue-100 rounded-xl p-6 flex flex-col md:flex-row items-center gap-6">
+        <div class="text-blue-500 text-4xl">
+            <i class="fas fa-shield-alt"></i>
+        </div>
+        <div>
+            <h3 class="font-bold text-blue-800 text-lg mb-1">Lưu ý an toàn</h3>
+            <p class="text-blue-700 text-sm">
+                Luôn kiểm tra kỹ thông tin người nhận. Không chuyển tiền hay phí "chuộc đồ" dưới mọi hình thức.
+                Nếu có nghi vấn, hãy báo cáo ngay cho Admin.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
