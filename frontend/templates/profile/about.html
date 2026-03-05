@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-16 pb-12">
+
+    <div class="flex flex-col md:flex-row items-center justify-between gap-12 pt-8 overflow-hidden">
+
+        <!-- Left text content: Title and List -->
+        <div class="flex-1 text-center md:text-left space-y-10">
+            <div class="animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
+                    Về <span class="text-orange-600">F-LostFound</span> <span class="text-gray-300">>>></span>
+                </h1>
+                <p class="text-lg text-gray-500">Kết nối cộng đồng FPTU – Tìm lại những gì đã mất</p>
+            </div>
+
+            <div class="space-y-8 text-left max-w-lg mx-auto md:mx-0">
+
+                <!-- Item 1 -->
+                <div
+                    class="flex items-start gap-4 animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out delay-100">
+                    <div
+                        class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-lg border border-orange-200 shadow-sm">
+                        01
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Sứ mệnh của chúng tôi</h3>
+                        <p class="text-gray-500 leading-relaxed text-sm">
+                            F-LostFound là dự án do sinh viên FPT xây dựng, nhằm giúp cộng đồng FPTU dễ dàng đăng tin và
+                            tìm kiếm đồ bị thất lạc trong khuôn viên trường.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Item 2 -->
+                <div
+                    class="flex items-start gap-4 animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out delay-200">
+                    <div
+                        class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-lg border border-orange-200 shadow-sm">
+                        02
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Môi trường học tập tốt đẹp</h3>
+                        <p class="text-gray-500 leading-relaxed text-sm">
+                            Chúng tôi tin rằng sự tử tế và ý thức cộng đồng sẽ làm cho môi trường học tập trở nên gắn
+                            kết và văn minh hơn mỗi ngày.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Item 3 -->
+                <div
+                    class="flex items-start gap-4 animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out delay-300">
+                    <div
+                        class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-lg border border-orange-200 shadow-sm">
+                        03
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Dành riêng cho sinh viên FPT</h3>
+                        <p class="text-gray-500 leading-relaxed text-sm">
+                            Hệ thống tối ưu hoá với thông báo theo thời gian thực, đảm bảo người nhặt được đồ sẽ liên hệ
+                            với bạn nhanh nhất có thể.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Right image -->
+        <div
+            class="flex-1 w-full max-w-md mx-auto relative group animate-on-scroll translate-x-[50px] opacity-0 transition-all duration-700 ease-out delay-200">
+            <div
+                class="absolute inset-0 bg-gradient-to-tr from-orange-200 to-red-200 rounded-3xl blur-2xl opacity-40 group-hover:opacity-60 transition duration-500">
+            </div>
+            <img src="{{ url_for('static', filename='about_f_lostfound.png') }}" alt="Về F-LostFound"
+                class="w-full h-auto relative z-10 rounded-3xl shadow-2xl border-4 border-white transform transition duration-500 hover:scale-[1.02]">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl border p-6 text-center shadow-sm">
+            <i class="fas fa-shield-alt text-4xl text-orange-500 mb-3"></i>
+            <h3 class="font-bold text-gray-800 mb-1">An Toàn</h3>
+            <p class="text-gray-500 text-sm">AI tự động phát hiện spam, giữ bảng tin sạch và trung thực.</p>
+        </div>
+        <div class="bg-white rounded-2xl border p-6 text-center shadow-sm">
+            <i class="fas fa-bolt text-4xl text-orange-500 mb-3"></i>
+            <h3 class="font-bold text-gray-800 mb-1">Nhanh Chóng</h3>
+            <p class="text-gray-500 text-sm">Thông báo thời gian thực, kết nối người mất và người nhặt tức thì.</p>
+        </div>
+        <div class="bg-white rounded-2xl border p-6 text-center shadow-sm">
+            <i class="fas fa-heart text-4xl text-orange-500 mb-3"></i>
+            <h3 class="font-bold text-gray-800 mb-1">Miễn Phí</h3>
+            <p class="text-gray-500 text-sm">Hoàn toàn miễn phí, xây dựng vì cộng đồng sinh viên FPTU.</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border p-8 shadow-sm">
+        <h3 class="font-bold text-gray-800 text-xl mb-4">Đội Ngũ Phát Triển</h3>
+        <p class="text-gray-500">Dự án được xây dựng bởi <strong>Ban Chuyên Môn – JS Club FPT</strong>, kết hợp với Ban
+            Truyền Thông và Ban Nội Dung.</p>
+        <p class="text-gray-500 mt-2">Tech stack: Flask · SQLAlchemy · SocketIO · scikit-learn · Tailwind CSS.</p>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.remove('opacity-0', 'translate-x-[50px]', 'translate-x-[-50px]');
+                    entry.target.classList.add('opacity-100', 'translate-x-0');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+    });
+</script>
+{% endblock %}
