@@ -3,13 +3,38 @@ User model
 """
 from flask_login import UserMixin
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
 
+
 class User(UserMixin, db.Model):
+    # Core fields
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-    phone = db.Column(db.String(20), nullable=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+
+    # Profile fields
+    full_name = db.Column(db.String(100))
+    phone_number = db.Column(db.String(20))
+    avatar_url = db.Column(db.String(300), default='')
+    about_me = db.Column(db.Text)
+
+    # System fields
     is_admin = db.Column(db.Boolean, default=False)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # --- Password helpers ---
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    # --- Avatar helper ---
+    @property
+    def avatar(self):
+        """Return avatar URL or initials placeholder."""
+        if self.avatar_url:
+            return self.avatar_url
+        return f"https://ui-avatars.com/api/?name={self.username}&background=F27123&color=fff&size=128"

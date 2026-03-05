@@ -11,6 +11,7 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(150), nullable=False)
     phone = db.Column(db.String(20), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
+    avatar = db.Column(db.String(200), nullable=True)
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Item(db.Model):

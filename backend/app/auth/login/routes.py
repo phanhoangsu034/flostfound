@@ -3,7 +3,6 @@ Login routes
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user
-from werkzeug.security import check_password_hash
 from app.models.user import User
 
 bp = Blueprint('auth_login', __name__)
@@ -15,7 +14,7 @@ def login():
         password = request.form.get('password')
         
         user = User.query.filter_by(username=username).first()
-        if user and check_password_hash(user.password, password):
+        if user and user.check_password(password):
             login_user(user)
             return redirect(url_for('posts_view.index'))
         else:

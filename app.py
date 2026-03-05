@@ -48,11 +48,44 @@ def before_request():
         db.session.commit()
 
 @app.context_processor
-def inject_unread_count():
+def inject_notifications():
     if current_user.is_authenticated:
-        count = Message.query.filter_by(recipient_id=current_user.id, is_read=False).count()
-        return dict(unread_count=count)
-    return dict(unread_count=0)
+        # Get private messages
+        unread_messages = Message.query.filter_by(recipient_id=current_user.id).order_by(Message.timestamp.desc()).limit(10).all()
+        
+        # Get system logs (actions)
+        system_logs = ActionLog.query.filter_by(user_id=current_user.id).order_by(ActionLog.timestamp.desc()).limit(10).all()
+        
+        all_notifications = []
+        
+        # Convert Messages
+        for msg in unread_messages:
+            all_notifications.append({
+                'type': 'message',
+                'sender_name': msg.sender.username,
+                'sender_initial': msg.sender.username[0].upper(),
+                'body': msg.body,
+                'timestamp': msg.timestamp
+            })
+            
+        # Convert Logs
+        for log in system_logs:
+            all_notifications.append({
+                'type': 'log',
+                'sender_name': 'Hệ thống',
+                'sender_initial': 'H',
+                'body': f"{log.action}: {log.details}" if log.details else log.action,
+                'timestamp': log.timestamp
+            })
+            
+        # Sort by timestamp descending
+        all_notifications.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # Limit total
+        final_notifications = all_notifications[:10]
+        
+        return dict(notifications=final_notifications, notification_count=len(final_notifications))
+    return dict(notifications=[], notification_count=0)
 
 @app.route('/')
 def index():
@@ -157,13 +190,6 @@ def chat(recipient_id):
         ((Message.sender_id == recipient_id) & (Message.recipient_id == current_user.id))
     ).order_by(Message.timestamp.asc()).all()
     
-    # Mark unread messages from this sender as read
-    unread_msgs = Message.query.filter_by(sender_id=recipient_id, recipient_id=current_user.id, is_read=False).all()
-    if unread_msgs:
-        for msg in unread_msgs:
-            msg.is_read = True
-        db.session.commit()
-    
     return render_template('chat.html', recipient=recipient, messages=messages, datetime=datetime)
 
 @app.route('/messages')
@@ -208,7 +234,7 @@ def handle_message(data):
     if not current_user.is_authenticated:
         return
         
-    msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body, is_read=False)
+    msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
     db.session.add(msg)
     db.session.commit()
     
@@ -297,17 +323,112 @@ def admin_posts():
 
 # ... existing admin routes ...
 
+# Static Pages
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/guide')
+def guide():
+    return render_template('guide.html')
+
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not check_password_hash(current_user.password, current_password):
+            flash('Mật khẩu hiện tại không đúng.', 'danger')
+        elif new_password != confirm_password:
+            flash('Mật khẩu mới không khớp.', 'danger')
+        elif len(new_password) < 6:
+            flash('Mật khẩu mới phải có ít nhất 6 ký tự.', 'danger')
+        else:
+            current_user.password = generate_password_hash(new_password, method='scrypt')
+            db.session.commit()
+            flash('Đổi mật khẩu thành công!', 'success')
+            return redirect(url_for('profile'))
+            
+    return render_template('change_password.html')
+
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
     if request.method == 'POST':
-        # Update Profile Info
+        # Handle Avatar Upload
+        if 'avatar' in request.files:
+            file = request.files['avatar']
+            if file and file.filename != '':
+                from werkzeug.utils import secure_filename
+                import os
+                
+                # Check extension
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
+                if '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    filename = secure_filename(f"user_{current_user.id}_{int(datetime.utcnow().timestamp())}.{file.filename.rsplit('.', 1)[1].lower()}")
+                    upload_folder = os.path.join(app.root_path, 'static', 'uploads')
+                    if not os.path.exists(upload_folder):
+                        os.makedirs(upload_folder)
+                    
+                    file.save(os.path.join(upload_folder, filename))
+                    current_user.avatar = filename
+                    db.session.commit()
+                    flash('Cập nhật ảnh đại diện thành công!', 'success')
+                    
+                    # Log Avatar Update
+                    log = ActionLog(user_id=current_user.id, action="Cập nhật", details="Thay đổi ảnh đại diện")
+                    db.session.add(log)
+                    db.session.commit()
+                else:
+                    flash('Định dạng ảnh không hỗ trợ. Chỉ chấp nhận png, jpg, jpeg, gif.', 'danger')
+            return redirect(url_for('profile'))
+
+        # Update Profile Info (Only if not Avatar Upload)
         phone = request.form.get('phone')
         email = request.form.get('email')
         
-        # Basic validation could go here
+        # Validation Patterns
+        import re
+        
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            flash('Email không hợp lệ. Vui lòng kiểm tra lại (VD: user@example.com).', 'danger')
+            return redirect(url_for('profile'))
+        
+        # Phone: Starts with 0 (10 digits) or +84 (11 digits), prefix 3,5,7,8,9
+        if phone and not re.match(r'^(0|\+84)[35789][0-9]{8}$', phone):
+            flash('Số điện thoại không hợp lệ.', 'danger')
+            return redirect(url_for('profile'))
+        
+        # Check if email/phone already exists (excluding current user)
+        existing_user = User.query.filter(User.email == email, User.id != current_user.id).first()
+        if existing_user:
+            flash('Email này đã được sử dụng bởi tài khoản khác.', 'danger')
+            return redirect(url_for('profile'))
+
+        # Update Username
+        new_username = request.form.get('username')
+        if new_username and new_username != current_user.username:
+            # Check if username exists
+            existing_username = User.query.filter(User.username == new_username).first()
+            if existing_username:
+                flash('Tên hiển thị này đã được sử dụng. Vui lòng chọn tên khác.', 'danger')
+                return redirect(url_for('profile'))
+            current_user.username = new_username
+            
+            # Log Username Update
+            log = ActionLog(user_id=current_user.id, action="Cập nhật", details=f"Đổi tên thành {new_username}")
+            db.session.add(log)
+
         current_user.phone = phone
         current_user.email = email
+        
+        # Log Profile Update
+        log = ActionLog(user_id=current_user.id, action="Cập nhật", details="Thay đổi thông tin cá nhân")
+        db.session.add(log)
+        
         db.session.commit()
         flash('Cập nhật thông tin thành công!', 'success')
         return redirect(url_for('profile'))
@@ -317,7 +438,7 @@ def profile():
     lost_items = [i for i in my_items if i.item_type == 'Lost']
     found_items = [i for i in my_items if i.item_type == 'Found']
     
-    return render_template('profile.html', user=current_user, lost_items=lost_items, found_items=found_items)
+    return render_template('profile.html', user=current_user)
 
 # Unified delete route for Admin and Post Owner
 @app.route('/post/delete/<int:item_id>', methods=['POST'])
@@ -346,6 +467,16 @@ def delete_post(item_id):
         return redirect(url_for('profile'))
     else:
         return redirect(url_for('index'))
+
+@app.route('/my-posts')
+@login_required
+def my_posts():
+    # Get user's items
+    my_items = Item.query.filter_by(user_id=current_user.id).order_by(Item.date_posted.desc()).all()
+    lost_items = [i for i in my_items if i.item_type == 'Lost']
+    found_items = [i for i in my_items if i.item_type == 'Found']
+    
+    return render_template('my_posts.html', user=current_user, lost_items=lost_items, found_items=found_items)
 
 if __name__ == '__main__':
     with app.app_context():
