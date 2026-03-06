@@ -27,7 +27,7 @@
         <!-- Image Thumbnail (Optional - if main image exists) -->
         {% if item.image_url %}
         <div class="h-48 w-full overflow-hidden bg-gray-100 relative group">
-            <img src="{{ url_for('static', filename=item.image_url) }}"
+            <img src="{{ item.image_url if item.image_url.startswith('http') else url_for('static', filename=item.image_url) }}"
                 class="w-full h-full object-cover transition duration-500 group-hover:scale-110">
             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition duration-300"></div>
         </div>

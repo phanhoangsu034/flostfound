@@ -63,6 +63,7 @@ def edit_item(item_id):
         deleted_images_json = request.form.get('deleted_images')
         if deleted_images_json:
             import json
+            import cloudinary.uploader
             try:
                 deleted_images = json.loads(deleted_images_json)
                 print(f"[UPDATE] Deleting images: {deleted_images}")
@@ -76,10 +77,24 @@ def edit_item(item_id):
                     
                     # Delete physical file
                     try:
-                        file_path = os.path.join(current_app.static_folder, img_url)
-                        if os.path.exists(file_path):
-                            os.remove(file_path)
-                            print(f"[UPDATE] Deleted file: {file_path}")
+                        if img_url.startswith('http'):
+                            # Try to extract public_id to destroy from cloudinary
+                            # e.g., https://res.cloudinary.com/.../image/upload/v.../folder/file.jpg
+                            import re
+                            parts = img_url.split('/upload/')
+                            if len(parts) > 1:
+                                path_after_upload = parts[1]
+                                path_without_version = re.sub(r'^v\d+/', '', path_after_upload)
+                                public_id = path_without_version.rsplit('.', 1)[0]
+                            else:
+                                public_id = img_url.split('/')[-1].split('.')[0]
+                            cloudinary.uploader.destroy(public_id)
+                            print(f"[UPDATE] Destroyed file in Cloudinary: {public_id}")
+                        else:
+                            file_path = os.path.join(current_app.static_folder, img_url)
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                                print(f"[UPDATE] Deleted local file: {file_path}")
                     except Exception as e:
                         print(f"[UPDATE] Error deleting file {img_url}: {e}")
             except Exception as e:
@@ -90,28 +105,21 @@ def edit_item(item_id):
         
         # Process files
         new_images = []
-        for file in uploaded_files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                # Add timestamp to avoid conflicts
-                import time
-                filename = f"{int(time.time())}_{filename}"
-                
-                # Create upload dir if not exists
-                upload_dir = os.path.join(current_app.static_folder, 'uploads', 'posts')
-                os.makedirs(upload_dir, exist_ok=True)
-                
-                # Save file
-                file_path = os.path.join(upload_dir, filename)
-                file.save(file_path)
-                
-                # Create ItemImage
-                # Use relative path for URL
-                image_url = f"uploads/posts/{filename}" # Relative to static
-                img_obj = ItemImage(image_url=image_url, item=item)
-                db.session.add(img_obj)
-                new_images.append(image_url)
-                print(f"[UPDATE] Added new image: {image_url}")
+        if uploaded_files:
+            import cloudinary.uploader
+            for file in uploaded_files:
+                if file and allowed_file(file.filename):
+                    try:
+                        # Upload directly to Cloudinary
+                        upload_result = cloudinary.uploader.upload(file, folder="flostfound/posts")
+                        image_url = upload_result.get('secure_url')
+                        
+                        img_obj = ItemImage(image_url=image_url, item=item)
+                        db.session.add(img_obj)
+                        new_images.append(image_url)
+                        print(f"[UPDATE] Added new image: {image_url}")
+                    except Exception as e:
+                        print(f"[UPDATE] Error uploading image to cloudinary: {e}")
 
         # Update primary image_url
         # Get all remaining images for this item

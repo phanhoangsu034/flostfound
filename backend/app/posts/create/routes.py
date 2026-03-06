@@ -70,20 +70,20 @@ def post_item():
         saved_images = []
         
         if uploaded_files:
-            upload_dir = os.path.join(current_app.static_folder, 'uploads', 'posts')
-            os.makedirs(upload_dir, exist_ok=True)
+            import cloudinary.uploader
             
             for file in uploaded_files:
                 if file and allowed_file(file.filename):
-                    filename = secure_filename(f"{new_item.id}_{file.filename}")
-                    file_path = os.path.join(upload_dir, filename)
-                    file.save(file_path)
-                    
-                    # Store relative path
-                    image_url = f"uploads/posts/{filename}"
-                    img_obj = ItemImage(image_url=image_url, item_id=new_item.id)
-                    db.session.add(img_obj)
-                    saved_images.append(image_url)
+                    try:
+                        # Upload directly to Cloudinary
+                        upload_result = cloudinary.uploader.upload(file, folder="flostfound/posts")
+                        image_url = upload_result.get('secure_url')
+                        
+                        img_obj = ItemImage(image_url=image_url, item_id=new_item.id)
+                        db.session.add(img_obj)
+                        saved_images.append(image_url)
+                    except Exception as e:
+                        print(f"Error uploading image to cloudinary: {e}")
             
             # Set primary image
             if saved_images:
