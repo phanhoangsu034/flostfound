@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="flex flex-col md:flex-row gap-6">
+
+        {# ── SIDEBAR ── #}
+        <aside class="w-full md:w-64 flex-shrink-0">
+            {# Avatar card #}
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4 text-center">
+                <a href="{{ url_for('profile.edit_profile') }}" class="relative inline-block group"
+                    title="Thay đổi ảnh đại diện">
+                    <img id="sidebar-avatar" src="{{ current_user.avatar }}"
+                        class="w-20 h-20 rounded-full object-cover border-4 border-orange-400 mx-auto shadow group-hover:opacity-80 transition">
+                    <div
+                        class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded-full opacity-0 group-hover:opacity-100 transition duration-300">
+                        <i class="fas fa-camera text-white text-xs"></i>
+                    </div>
+                </a>
+                <p id="sidebar-name" class="mt-3 font-bold text-gray-800 text-lg">
+                    {{ current_user.full_name or current_user.username }}
+                </p>
+                <p class="text-xs text-gray-400">@{{ current_user.username }}</p>
+            </div>
+
+            {# Nav menu #}
+            <nav class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <a href="{{ url_for('profile.profile') }}"
+                    class="flex items-center gap-3 px-5 py-4 text-sm font-medium transition
+                          {% if active == 'profile' %}bg-orange-50 border-l-4 border-orange-500 text-orange-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                    <i class="fas fa-user w-4 text-center"></i> Hồ Sơ
+                </a>
+                <a href="{{ url_for('profile.activity') }}"
+                    class="flex items-center gap-3 px-5 py-4 text-sm font-medium transition
+                          {% if active == 'activity' %}bg-orange-50 border-l-4 border-orange-500 text-orange-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                    <i class="fas fa-history w-4 text-center"></i> Quản Lý Hoạt Động
+                </a>
+                <a href="{{ url_for('profile.edit_profile') }}"
+                    class="flex items-center gap-3 px-5 py-4 text-sm font-medium transition
+                          {% if active == 'edit' %}bg-orange-50 border-l-4 border-orange-500 text-orange-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                    <i class="fas fa-pen w-4 text-center"></i> Cập Nhật Thông Tin
+                </a>
+                <a href="{{ url_for('profile.change_password') }}"
+                    class="flex items-center gap-3 px-5 py-4 text-sm font-medium transition
+                          {% if active == 'password' %}bg-orange-50 border-l-4 border-orange-500 text-orange-600{% else %}text-gray-600 hover:bg-gray-50{% endif %}">
+                    <i class="fas fa-key w-4 text-center"></i> Đổi Mật Khẩu
+                </a>
+                <div class="border-t border-gray-100"></div>
+                <a href="{{ url_for('auth_logout.logout') }}"
+                    class="flex items-center gap-3 px-5 py-4 text-sm font-bold text-red-500 hover:bg-red-50 transition">
+                    <i class="fas fa-sign-out-alt w-4 text-center"></i> Đăng Xuất
+                </a>
+            </nav>
+        </aside>
+
+        {# ── MAIN CONTENT ── #}
+        <main class="flex-1 min-w-0">
+            {% block profile_content %}{% endblock %}
+        </main>
+
+    </div>
+</div>
+{% endblock %}

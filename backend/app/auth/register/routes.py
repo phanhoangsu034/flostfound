@@ -2,7 +2,6 @@
 Registration routes
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from werkzeug.security import generate_password_hash
 from app.extensions import db
 from app.models.user import User
 
@@ -15,12 +14,16 @@ def register():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        user = User.query.filter_by(username=username).first()
-        if user:
+        if User.query.filter_by(username=username).first():
             flash('Tên đăng nhập đã tồn tại.', 'danger')
             return redirect(url_for('auth_register.register'))
+
+        if User.query.filter_by(email=email).first():
+            flash('Email này đã được sử dụng.', 'danger')
+            return redirect(url_for('auth_register.register'))
             
-        new_user = User(username=username, email=email, password=generate_password_hash(password, method='scrypt'))
+        new_user = User(username=username, email=email)
+        new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
         

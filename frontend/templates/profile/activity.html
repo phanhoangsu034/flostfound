@@ -1,0 +1,97 @@
+{% extends "profile/layout.html" %}
+
+{% block profile_content %}
+<div class="space-y-6">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2 mb-1">
+            <i class="fas fa-history text-orange-500"></i> Quản Lý Hoạt Động
+        </h2>
+        <p class="text-sm text-gray-400">Tất cả bài đăng của bạn trên hệ thống.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {# ── Lost Items ── #}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-red-500 flex items-center gap-2">
+                    <i class="fas fa-search-location"></i> Tìm Đồ
+                </h3>
+                <span class="bg-red-50 text-red-500 text-xs font-bold px-3 py-1 rounded-full">{{ lost_items|length
+                    }}</span>
+            </div>
+            <div class="space-y-3">
+                {% for item in lost_items %}
+                <div onclick="window.location.href='{{ url_for('posts_view.index') }}?new_post_id={{ item.id }}'"
+                    class="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-semibold text-gray-800 group-hover:text-orange-600 transition text-sm">{{
+                                item.title }}</p>
+                            <p class="text-xs text-gray-400 mt-1">
+                                <i class="fas fa-map-marker-alt mr-1"></i>{{ item.location or '—' }}
+                                &nbsp;·&nbsp;{{ item.date_posted.strftime('%d/%m/%Y') }}
+                            </p>
+                        </div>
+                        <form action="{{ url_for('posts_delete.delete_post', item_id=item.id) }}" method="POST"
+                            onsubmit="event.stopPropagation(); return confirm('Xoá bài đăng này?');">
+                            <button class="text-gray-300 hover:text-red-500 transition p-1" title="Xoá"
+                                onclick="event.stopPropagation();">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-10 text-gray-300">
+                    <i class="fas fa-folder-open text-4xl mb-2"></i>
+                    <p class="text-sm">Bạn chưa đăng tin tìm đồ nào.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# ── Found Items ── #}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-green-600 flex items-center gap-2">
+                    <i class="fas fa-check-circle"></i> Nhặt Được
+                </h3>
+                <span class="bg-green-50 text-green-600 text-xs font-bold px-3 py-1 rounded-full">{{ found_items|length
+                    }}</span>
+            </div>
+            <div class="space-y-3">
+                {% for item in found_items %}
+                <div onclick="window.location.href='{{ url_for('posts_view.index') }}?new_post_id={{ item.id }}'"
+                    class="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-semibold text-gray-800 group-hover:text-green-600 transition text-sm">{{
+                                item.title }}</p>
+                            <p class="text-xs text-gray-400 mt-1">
+                                <i class="fas fa-map-marker-alt mr-1"></i>{{ item.location or '—' }}
+                                &nbsp;·&nbsp;{{ item.date_posted.strftime('%d/%m/%Y') }}
+                            </p>
+                        </div>
+                        <form action="{{ url_for('posts_delete.delete_post', item_id=item.id) }}" method="POST"
+                            onsubmit="event.stopPropagation(); return confirm('Xoá bài đăng này?');">
+                            <button class="text-gray-300 hover:text-red-500 transition p-1" title="Xoá"
+                                onclick="event.stopPropagation();">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-10 text-gray-300">
+                    <i class="fas fa-folder-open text-4xl mb-2"></i>
+                    <p class="text-sm">Bạn chưa đăng tin nhặt được đồ nào.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

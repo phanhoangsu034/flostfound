@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+    {# Header #}
+    <div class="text-center mb-10">
+        <h1 class="text-3xl font-bold text-gray-900">Hướng Dẫn Sử Dụng F-LostFound</h1>
+        <p class="text-gray-500 mt-2">Cộng đồng hỗ trợ tìm kiếm đồ thất lạc dành riêng cho sinh viên FPT University</p>
+    </div>
+
+    {# Two-column cards #}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+
+        {# ── Tôi bị mất đồ ── #}
+        <div class="bg-red-50 border border-red-100 rounded-2xl p-6 shadow-sm">
+            <div class="flex flex-col items-center mb-5">
+                <div class="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-3">
+                    <i class="fas fa-search text-red-500 text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800">Tôi bị mất đồ</h2>
+                <p class="text-red-500 text-sm italic mt-1">"Cứu tinh cho người nào cá vàng"</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-full bg-red-500 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm">Tìm kiếm trước (Search First)</p>
+                        <p class="text-gray-500 text-sm mt-0.5">Đừng vội đăng tin. Hãy nhập từ khoá (VD: "Thẻ SV", "Ví
+                            nâu", "Airpod") vào ô tìm kiếm.</p>
+                        <div
+                            class="mt-2 bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                            <i class="fas fa-map-marker-alt text-orange-500 mt-0.5 text-xs"></i>
+                            <p class="text-xs text-orange-600">Mẹo FPT: Lọc theo địa điểm (VD: Tòa Alpha, Thư viện,
+                                Canteen) để tìm nhanh hơn.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-full bg-red-500 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm">Đăng tin báo mất</p>
+                        <p class="text-gray-500 text-sm mt-0.5">Nếu tìm không thấy, nhấn nút <strong
+                                class="text-orange-600">Đăng Tin</strong> → Chọn "Tôi bị mất đồ".</p>
+                        <ul class="text-sm text-gray-500 list-disc list-inside mt-1 space-y-1">
+                            <li>Mô tả kỹ đặc điểm (Màu sắc, vết xước, móc khoá...)</li>
+                            <li><strong>Quan trọng:</strong> Đăng ảnh mô phỏng hoặc ảnh thật để dễ nhận diện.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-full bg-red-500 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm">Theo dõi & Nhận lại</p>
+                        <p class="text-gray-500 text-sm mt-0.5">Hệ thống sẽ thông báo khi có đồ vật tương tự. Chủ động
+                            nhắn tin cho người nhặt để xác minh và hẹn gặp.</p>
+                    </div>
+                </div>
+            </div>
+
+            <a href="{{ url_for('posts_view.index') }}"
+                class="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold text-sm transition hover:-translate-y-0.5 shadow-md"
+                style="background:#dc3545">
+                <i class="fas fa-bullhorn"></i> Báo Mất Đồ Ngay
+            </a>
+        </div>
+
+        {# ── Tôi nhặt được đồ ── #}
+        <div class="bg-green-50 border border-green-100 rounded-2xl p-6 shadow-sm">
+            <div class="flex flex-col items-center mb-5">
+                <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-3">
+                    <i class="fas fa-hands-helping text-green-600 text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800">Tôi nhặt được đồ</h2>
+                <p class="text-green-600 text-sm italic mt-1">"Người tốt việc tốt – Lan toả yêu thương"</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm">Đăng tin nhặt được</p>
+                        <p class="text-gray-500 text-sm mt-0.5">Nhấn nút <strong class="text-orange-600">Đăng
+                                Tin</strong> → Chọn "Tôi nhặt được đồ". Hãy chụp ảnh vật phẩm rõ nét nhất có thể.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm">Chọn phương án giữ đồ</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="bg-white rounded-lg border border-gray-200 px-3 py-2 text-sm">
+                                <p class="font-bold text-gray-700">Phương án A: Tự giữ đồ</p>
+                                <p class="text-gray-500 text-xs">Bạn điền thông tin liên hệ để người mất gọi điện trực
+                                    tiếp.</p>
+                            </div>
+                            <div class="bg-green-100 rounded-lg border border-green-200 px-3 py-2 text-sm">
+                                <p class="font-bold text-green-700 flex items-center gap-1">
+                                    <i class="fas fa-check-circle text-green-600"></i> Phương án B: Gửi Bảo vệ/CTSV
+                                </p>
+                                <p class="text-gray-500 text-xs">Khuyến dùng. Đem đồ xuống phòng bảo vệ hoặc CTSV. Ghi
+                                    chú trên web "Đã gửi cho bảo vệ sảnh Alpha".</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span
+                        class="flex-shrink-0 w-7 h-7 rounded-full bg-green-600 text-white text-sm font-bold flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm">Hoàn tất</p>
+                        <p class="text-gray-500 text-sm mt-0.5">Khi người mất liên hệ hoặc đã nhận đồ từ bảo vệ, hãy vào
+                            bài đăng chuyển trạng thái sang "Đã tìm thấy" để đồng tin.</p>
+                    </div>
+                </div>
+            </div>
+
+            <a href="{{ url_for('posts_view.index') }}"
+                class="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold text-sm transition hover:-translate-y-0.5 shadow-md"
+                style="background:#28a745">
+                <i class="fas fa-box-open"></i> Báo Nhặt Được
+            </a>
+        </div>
+    </div>
+
+    {# ── An Toàn & Cộng Đồng ── #}
+    <div class="text-center mb-6">
+        <p class="font-bold text-gray-700 text-lg">
+            <span class="text-orange-500">🧡</span> Lưu Ý An Toàn &amp; Cộng Đồng
+        </p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-start gap-4">
+            <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-hand-holding-usd text-orange-500"></i>
+            </div>
+            <div>
+                <p class="font-bold text-gray-800 text-sm">Không chuyển khoản trước</p>
+                <p class="text-gray-500 text-xs mt-1">Cảnh giác tuyệt đối không chuyển tiền đề "chuộc đồ" hay "phí ship"
+                    trước khi gặp mặt.</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-start gap-4">
+            <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-users text-orange-500"></i>
+            </div>
+            <div>
+                <p class="font-bold text-gray-800 text-sm">Hẹn nơi đông người</p>
+                <p class="text-gray-500 text-xs mt-1">Nên gặp nhau tại Canteen, Sảnh giảng đường, Thư viện hoặc phòng
+                    Bảo vệ.</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-start gap-4">
+            <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-id-card text-orange-500"></i>
+            </div>
+            <div>
+                <p class="font-bold text-gray-800 text-sm">Xác minh kỹ lưỡng</p>
+                <p class="text-gray-500 text-xs mt-1">Yêu cầu người nhận đọc đúng số ID thẻ, mô tả chi tiết hoặc mô tả
+                    đặc điểm thiết bị trước khi trao trả.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
