@@ -1,0 +1,199 @@
+/* ============================================================
+   Search & Filter Styles – F-LostFound
+   ============================================================ */
+
+/* ---------- Skeleton shimmer ---------- */
+@keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.skeleton {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+.skeleton-card {
+    min-height: 320px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.skeleton-card .skeleton-img   { height: 192px; width: 100%; }
+.skeleton-card .skeleton-badge { height: 24px; width: 72px; margin-bottom: 12px; }
+.skeleton-card .skeleton-title { height: 20px; width: 70%; margin-bottom: 8px; }
+.skeleton-card .skeleton-text  { height: 14px; width: 100%; margin-bottom: 6px; }
+.skeleton-card .skeleton-text2 { height: 14px; width: 60%; margin-bottom: 14px; }
+.skeleton-card .skeleton-loc   { height: 14px; width: 40%; }
+
+/* ---------- Autocomplete dropdown ---------- */
+.autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    z-index: 50;
+    max-height: 400px;
+    overflow-y: auto;
+    display: none;
+    border: 1px solid rgba(0,0,0,.06);
+    border-top: none;
+}
+.autocomplete-dropdown.active { display: block; }
+
+.autocomplete-dropdown .ac-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    padding: 10px 16px 4px;
+}
+
+.autocomplete-dropdown .ac-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background .15s;
+}
+.autocomplete-dropdown .ac-item:hover { background: #fff7ed; }
+
+.autocomplete-dropdown .ac-item .ac-icon {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.autocomplete-dropdown .ac-item-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background .15s;
+}
+.autocomplete-dropdown .ac-item-card:hover { background: #fff7ed; }
+
+.autocomplete-dropdown .ac-item-card img {
+    width: 48px; height: 48px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+/* ---------- Filter chips ---------- */
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    border: 1.5px solid transparent;
+    user-select: none;
+}
+.filter-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+
+.filter-chip.active-lost    { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.filter-chip.active-found   { background: #f0fdf4; color: #16a34a; border-color: #86efac; }
+.filter-chip.active-generic { background: #fff7ed; color: #ea580c; border-color: #fdba74; }
+.filter-chip.inactive       { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+
+/* ---------- Active filter tags ---------- */
+.active-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+}
+.active-tag .remove-tag {
+    cursor: pointer;
+    font-size: 14px;
+    opacity: .6;
+    transition: opacity .15s;
+}
+.active-tag .remove-tag:hover { opacity: 1; }
+
+/* ---------- Card fade-in ---------- */
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.card-animate {
+    animation: cardFadeIn .35s ease forwards;
+}
+
+/* ---------- Post card color coding borders ---------- */
+.card-lost  { border-left: 4px solid #ef4444; }
+.card-found { border-left: 4px solid #22c55e; }
+
+/* ---------- Empty state ---------- */
+.empty-state-icon {
+    font-size: 64px;
+    color: #d1d5db;
+    margin-bottom: 16px;
+}
+
+/* ---------- Search input focus ---------- */
+.search-wrapper:focus-within {
+    box-shadow: 0 0 0 3px rgba(234, 88, 12, .15);
+    border-color: #ea580c;
+}
+
+/* ---------- Filter panel slide ---------- */
+@keyframes slideDown {
+    from { opacity: 0; max-height: 0; }
+    to   { opacity: 1; max-height: 500px; }
+}
+.filter-panel-open {
+    animation: slideDown .3s ease forwards;
+    overflow: hidden;
+}
+
+/* ---------- Result counter pulse ---------- */
+@keyframes counterPulse {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+.counter-pulse {
+    animation: counterPulse .3s ease;
+}
+
+/* ---------- Pagination ---------- */
+.page-btn {
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+}
+.page-btn:hover { background: #fff7ed; border-color: #fdba74; color: #ea580c; }
+.page-btn.active { background: #ea580c; color: white; border-color: #ea580c; }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
