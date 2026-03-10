@@ -7,7 +7,7 @@ Trước khi bắt đầu, hãy đảm bảo máy bạn đã có:
 - **Python 3.9+** (Khuyên dùng Python 3.11+)
 - **Git**
 - **Trình duyệt web** (Chrome, Edge, Firefox...)
-- Một IDE tùy chọn (Khuyên dùng VS Code hoặc PyCharm)
+- Một IDE tùy chọn (Khuyên dùng VS Code)
 
 ## 📥 2. Cài đặt dự án (Setup)
 
@@ -46,7 +46,7 @@ pip install -r requirements.txt
 3. Điền `SECRET_KEY` (có thể là một chuỗi ký tự ngẫu nhiên bất kỳ để bảo mật session).
 4. **Đặc biệt lưu ý:** Bổ sung biến môi trường Cloudinary. Tính năng đăng ảnh bài viết bắt buộc phải có thông số này. (Đăng ký tài khoản miễn phí tại trang chủ Cloudinary để lấy key api):
 ```ini
-CLOUDINARY_URL=cloudinary://<API_KEY>:<API_SECRET>@<CLOUD_NAME>
+CLOUDINARY_URL=cloudinary://943732253697764:kifj9uG7v0mydXq_zJV3H_B_Je4@dbpqjnu0o
 ```
 
 ## 🗄️ 3. Khởi tạo Cơ sở dữ liệu (Database)
@@ -94,6 +94,21 @@ Quy tắc vận hành code đẩy lên Github (hạn chế vỡ code người kh
 2. Thiết lập nhánh code (Branch) riêng cho mỗi tính năng bạn làm: **`git checkout -b feature/ten-cua-ban`**.
 3. Sau khi code xong, thực hiện tuần tự: `git add .` -> `git commit -m "Báo cáo update nội dung gì..."` -> `git push origin feature/ten-cua-ban`.
 4. Trở lại GitHub web trên trình duyệt và tạo Pull Request (PR) để chờ Leader và các anh em test chéo. (Tuyệt đối không push thẳng code lên nhánh `main`).
+
+## 💡 8. Giải thích các tính năng quan trọng
+
+### 1. Nhắn tin liên hệ trực tiếp
+Hệ thống cho phép người dùng click vào nút "Nhắn tin trao đổi" trên bài viết. Thao tác này sẽ tự động mở ra một hộp thoại chat riêng tư trực tiếp với người đã đăng tin. (Lưu ý: Nếu bị kẹt cổng 5000 làm SocketIO không chạy được, hãy kill process đang dùng port 5000 rồi chạy lại `python run.py`).
+
+### 2. Xử lý Thời gian thực (Timezone)
+Toàn bộ thời gian hiển thị trên ứng dụng đã được tự động chuẩn hóa. Khi đăng tin, thời gian trên server lưu ở dạng chuẩn UTC và sẽ được tự động dịch sang múi giờ tương ứng (hiện đúng thời gian) trên máy tính/điện thoại người dùng khi họ lướt báo.
+
+### 3. Trạng thái tin đăng (Status)
+Hệ thống dùng Trạng thái tin (Status) để báo cáo tiến độ tìm/trả đồ:
+
+- **Chưa giải quyết (Open):** Là trạng thái mặc định lúc vừa đăng xong. Tin này sẽ được tự động hiển thị công khai ở Trang chủ và hệ thống tìm kiếm.
+- **Đã giải quyết / Đã hoàn trả (Closed):** Trường hợp đồ thất lạc đã về lại với chủ. Người đăng bài có thể đánh dấu bài viết của họ thành "Đã trả lại/ Đã giải quyết" bằng cách vào **Hồ sơ của tôi -> Tin đã đăng -> Edit**. Khi chuyển sang trạng thái này, bài viết sẽ lập tức ẩn đi khỏi bảng tin Trang chủ để nhường chỗ cho đồ bị mất của người khác đi tìm, nhưng vẫn có thể xem lại nếu dùng bộ lọc tìm kiếm tuỳ chỉnh.
+
 
 ## 🆘 Hỗ trợ
 Nếu quá trình cài đặt gặp lỗi xuất hiện trên Terminal báo đỏ (đặc biệt các dạng lỗi `ImportError` ở thư viện scikit-learn, psycopg binary hoặc cài thiếu package eventlet / SocketIO), bạn hãy copy đoạn text log lỗi đó vào box chat team hoặc hỏi ChatBot để được hỗ trợ lệnh pip cài bổ sung ngay kịp thời!
