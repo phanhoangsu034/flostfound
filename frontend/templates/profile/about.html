@@ -6,7 +6,7 @@
 
         <!-- Left text content: Title and List -->
         <div class="flex-1 text-center md:text-left space-y-10">
-            <div class="animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out">
+            <div class="animate-from-left">
                 <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
                     Về <span class="text-orange-600">F-LostFound</span> <span class="text-gray-300">>>></span>
                 </h1>
@@ -16,8 +16,7 @@
             <div class="space-y-8 text-left max-w-lg mx-auto md:mx-0">
 
                 <!-- Item 1 -->
-                <div
-                    class="flex items-start gap-4 animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out delay-100">
+                <div class="flex items-start gap-4 animate-from-left" style="transition-delay: 100ms;">
                     <div
                         class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-lg border border-orange-200 shadow-sm">
                         01
@@ -32,8 +31,7 @@
                 </div>
 
                 <!-- Item 2 -->
-                <div
-                    class="flex items-start gap-4 animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out delay-200">
+                <div class="flex items-start gap-4 animate-from-left" style="transition-delay: 200ms;">
                     <div
                         class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-lg border border-orange-200 shadow-sm">
                         02
@@ -48,8 +46,7 @@
                 </div>
 
                 <!-- Item 3 -->
-                <div
-                    class="flex items-start gap-4 animate-on-scroll translate-x-[-50px] opacity-0 transition-all duration-700 ease-out delay-300">
+                <div class="flex items-start gap-4 animate-from-left" style="transition-delay: 300ms;">
                     <div
                         class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-full bg-orange-100 text-orange-600 font-bold text-lg border border-orange-200 shadow-sm">
                         03
@@ -66,9 +63,7 @@
             </div>
         </div>
 
-        <!-- Right image -->
-        <div
-            class="flex-1 w-full max-w-md mx-auto relative group animate-on-scroll translate-x-[50px] opacity-0 transition-all duration-700 ease-out delay-200">
+        <div class="flex-1 w-full max-w-md mx-auto relative group animate-from-right" style="transition-delay: 200ms;">
             <div
                 class="absolute inset-0 bg-gradient-to-tr from-orange-200 to-red-200 rounded-3xl blur-2xl opacity-40 group-hover:opacity-60 transition duration-500">
             </div>
@@ -77,54 +72,171 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div class="bg-white rounded-2xl border p-6 text-center shadow-sm">
-            <i class="fas fa-shield-alt text-4xl text-orange-500 mb-3"></i>
-            <h3 class="font-bold text-gray-800 mb-1">An Toàn</h3>
-            <p class="text-gray-500 text-sm">AI tự động phát hiện spam, giữ bảng tin sạch và trung thực.</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-12">
+        <div class="text-center animate-from-left">
+            <i class="fas fa-shield-alt text-5xl text-blue-500 mb-4 drop-shadow-sm"></i>
+            <h3 class="font-bold text-gray-900 text-lg mb-2">An Toàn</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">AI tự động phát hiện spam, giữ bảng tin sạch và trung thực.
+            </p>
         </div>
-        <div class="bg-white rounded-2xl border p-6 text-center shadow-sm">
-            <i class="fas fa-bolt text-4xl text-orange-500 mb-3"></i>
-            <h3 class="font-bold text-gray-800 mb-1">Nhanh Chóng</h3>
-            <p class="text-gray-500 text-sm">Thông báo thời gian thực, kết nối người mất và người nhặt tức thì.</p>
+        <div class="text-center animate-from-bottom">
+            <i class="fas fa-bolt text-5xl text-amber-500 mb-4 drop-shadow-sm"></i>
+            <h3 class="font-bold text-gray-900 text-lg mb-2">Nhanh Chóng</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Thông báo thời gian thực, kết nối người mất và người nhặt
+                tức thì.</p>
         </div>
-        <div class="bg-white rounded-2xl border p-6 text-center shadow-sm">
-            <i class="fas fa-heart text-4xl text-orange-500 mb-3"></i>
-            <h3 class="font-bold text-gray-800 mb-1">Miễn Phí</h3>
-            <p class="text-gray-500 text-sm">Hoàn toàn miễn phí, xây dựng vì cộng đồng sinh viên FPTU.</p>
+        <div class="text-center animate-from-right">
+            <i class="fas fa-heart text-5xl text-red-500 mb-4 drop-shadow-sm"></i>
+            <h3 class="font-bold text-gray-900 text-lg mb-2">Miễn Phí</h3>
+            <p class="text-gray-500 text-sm leading-relaxed">Hoàn toàn miễn phí, xây dựng vì cộng đồng sinh viên FPTU.
+            </p>
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl border p-8 shadow-sm">
-        <h3 class="font-bold text-gray-800 text-xl mb-4">Đội Ngũ Phát Triển</h3>
-        <p class="text-gray-500">Dự án được xây dựng bởi <strong>Ban Chuyên Môn – JS Club FPT</strong>, kết hợp với Ban
-            Truyền Thông và Ban Nội Dung.</p>
-        <p class="text-gray-500 mt-2">Tech stack: Flask · SQLAlchemy · SocketIO · scikit-learn · Tailwind CSS.</p>
-    </div>
+    <!-- Redesigned Development Team Section -->
+    <div class="flex flex-col md:flex-row items-center gap-16 py-12 overflow-hidden animate-from-bottom">
 
+        <!-- Left Side: Text Content -->
+        <div class="flex-1 space-y-8 order-2 md:order-1">
+            <div class="space-y-4">
+                <h3 class="font-extrabold text-gray-900 text-3xl tracking-tight">Đội Ngũ Phát Triển</h3>
+                <div class="h-1.5 w-24 bg-gradient-to-r from-orange-500 to-red-500 rounded-full"></div>
+            </div>
+
+            <div class="space-y-6">
+                <p class="text-gray-600 text-xl leading-relaxed italic">
+                    "Sống là để cho đi, đâu chỉ nhận riêng mình. <br>
+                    Hãy cùng chúng tôi lan tỏa sự tử tế qua từng hành động nhỏ nhất."
+                </p>
+                <div class="flex items-center gap-3 text-red-600 font-bold text-lg">
+                    <i class="fas fa-heart animate-pulse"></i>
+                    <span>CTV từ JS Club FPT</span>
+                </div>
+            </div>
+
+            <div class="pt-8 border-t border-gray-100">
+                <p class="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold mb-5">Core Technology Stack</p>
+                <div class="flex flex-wrap gap-3">
+                    <span
+                        class="px-4 py-2 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-100 shadow-sm transition-all hover:scale-105">Flask</span>
+                    <span
+                        class="px-4 py-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-lg border border-indigo-100 shadow-sm transition-all hover:scale-105">SQLAlchemy</span>
+                    <span
+                        class="px-4 py-2 bg-purple-50 text-purple-700 text-xs font-bold rounded-lg border border-purple-100 shadow-sm transition-all hover:scale-105">SocketIO</span>
+                    <span
+                        class="px-4 py-2 bg-teal-50 text-teal-700 text-xs font-bold rounded-lg border border-teal-100 shadow-sm transition-all hover:scale-105">Tailwind
+                        CSS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Team Photo (Resized & Positioned) -->
+        <div class="flex-1 w-full max-w-md mx-auto relative group order-1 md:order-2">
+            <div
+                class="absolute -inset-3 bg-gradient-to-tr from-red-500/10 to-orange-500/10 rounded-[3rem] blur-2xl opacity-0 group-hover:opacity-100 transition duration-700">
+            </div>
+            <div
+                class="relative overflow-hidden rounded-[2.5rem] shadow-2xl border-8 border-white transform transition duration-1000 hover:scale-[1.03] hover:-rotate-1">
+                <img src="{{ url_for('static', filename='team_photo.png') }}" alt="Team JS Club"
+                    class="w-full h-auto object-cover"
+                    onerror="this.src='https://via.placeholder.com/800x500/f87171/ffffff?text=Hãy+thêm+ảnh+team_photo.png+vào+folder+static';">
+                <div
+                    class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<style>
+    .scroll-element {
+        opacity: 0;
+        transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform, opacity;
+    }
+
+    /* Entry styles */
+    .animate-from-left {
+        transform: translateX(-100px);
+    }
+
+    .animate-from-right {
+        transform: translateX(100px);
+    }
+
+    .animate-from-bottom {
+        transform: translateY(60px);
+    }
+
+    /* Active State */
+    .scroll-active {
+        opacity: 1 !important;
+        transform: translate(0, 0) !important;
+    }
+
+    /* Exit Styles (Scrolling down - elements go out to sides) */
+    .scroll-exit-up {
+        opacity: 0;
+        transform: translateX(150px);
+        /* Exit to right */
+    }
+
+    .animate-from-left.scroll-exit-up {
+        transform: translateX(-150px);
+    }
+
+    /* Exit to left */
+
+    /* Exit Styles (Scrolling up - elements go out to sides) */
+    .scroll-exit-down {
+        opacity: 0;
+        transform: translateY(100px);
+    }
+</style>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const observerOptions = {
-            root: null,
-            rootMargin: '0px',
-            threshold: 0.1
-        };
+        const sections = document.querySelectorAll('.animate-from-left, .animate-from-right, .animate-from-bottom, [class*="animate-on-scroll"]');
 
-        const observer = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.remove('opacity-0', 'translate-x-[50px]', 'translate-x-[-50px]');
-                    entry.target.classList.add('opacity-100', 'translate-x-0');
-                    observer.unobserve(entry.target);
+        // Add base class
+        sections.forEach(el => el.classList.add('scroll-element'));
+
+        let lastScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+        const handleScroll = () => {
+            const st = window.pageYOffset || document.documentElement.scrollTop;
+            const direction = st > lastScrollTop ? 'down' : 'up';
+
+            sections.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const elementTop = rect.top;
+                const elementBottom = rect.bottom;
+                const windowHeight = window.innerHeight;
+
+                // Check if element is in view
+                if (elementTop < windowHeight * 0.85 && elementBottom > windowHeight * 0.15) {
+                    el.classList.add('scroll-active');
+                    el.classList.remove('scroll-exit-up', 'scroll-exit-down');
+                } else {
+                    el.classList.remove('scroll-active');
+                    if (elementTop < 0) {
+                        // Above viewport
+                        el.classList.add('scroll-exit-up');
+                        el.classList.remove('scroll-exit-down');
+                    } else {
+                        // Below viewport
+                        el.classList.add('scroll-exit-down');
+                        el.classList.remove('scroll-exit-up');
+                    }
                 }
             });
-        }, observerOptions);
+            lastScrollTop = st <= 0 ? 0 : st;
+        };
 
-        document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll(); // Initial check
     });
 </script>
 {% endblock %}

@@ -13,6 +13,12 @@ bp = Blueprint('profile', __name__)
 
 # ───────────────────────────── Helpers ─────────────────────────────
 
+def allowed_file(filename):
+    """Check if the file extension is allowed."""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
 def validate_phone(phone: str):
     """Validate Vietnamese mobile phone numbers."""
     if not phone:
@@ -69,8 +75,6 @@ def activity():
                            lost_items=lost_items,
                            found_items=found_items,
                            active='activity')
-
-
 @bp.route('/profile/edit', methods=['GET', 'POST'])
 @login_required
 def edit_profile():
@@ -81,30 +85,6 @@ def edit_profile():
         phone      = (request.form.get('phone') or '').strip()
         about      = (request.form.get('about') or '').strip()
         avatar_url = (request.form.get('avatar_url') or '').strip()
-
-        # Handle file upload for avatar
-        avatar_file = request.files.get('avatar_file')
-        if avatar_file and avatar_file.filename:
-            from werkzeug.utils import secure_filename
-            import os
-            from flask import current_app
-            filename = secure_filename(avatar_file.filename)
-            # Fix: resolve absolute path to the frontend static uploads folder
-            uploads_dir = os.path.abspath(os.path.join(current_app.root_path, '../../frontend/static/uploads'))
-            os.makedirs(uploads_dir, exist_ok=True)
-            
-            import time
-            save_name = f"{int(time.time())}_{filename}"
-            filepath = os.path.join(uploads_dir, save_name)
-            avatar_file.save(filepath)
-            # Update user's avatar_url to the newly uploaded file path
-            current_user.avatar_url = url_for('static', filename='uploads/' + save_name)
-        elif avatar_url:
-            # Update via URL if provided and no file was uploaded
-            current_user.avatar_url = avatar_url
-        elif 'avatar_url' in request.form:
-            # allow clearing avatar if the field is present but empty
-             current_user.avatar_url = ''
 
         # --- Validate email ---
         ok, result = validate_email(email)
@@ -125,6 +105,30 @@ def edit_profile():
         if not ok:
             flash(result_phone, 'danger')
             return redirect(url_for('profile.edit_profile'))
+
+        # Handle file upload for avatar (Cloudinary)
+        avatar_file = request.files.get('avatar_file')
+        if avatar_file and avatar_file.filename and allowed_file(avatar_file.filename):
+            import cloudinary.uploader
+            try:
+                # Upload to Cloudinary folder "flostfound/avatars"
+                upload_result = cloudinary.uploader.upload(
+                    avatar_file, 
+                    folder="flostfound/avatars",
+                    public_id=f"user_{current_user.id}_avatar", # Consistent ID per user
+                    overwrite=True,
+                    invalidate=True
+                )
+                current_user.avatar_url = upload_result.get('secure_url')
+            except Exception as e:
+                print(f"Error uploading avatar to cloudinary: {e}")
+                flash("Lỗi tải ảnh lên Cloudinary. Vui lòng thử lại.", "danger")
+        elif avatar_url:
+            # Update via URL if provided and no file was successfully uploaded
+            current_user.avatar_url = avatar_url
+        elif 'avatar_url' in request.form:
+             # allow clearing avatar if the field is present but empty
+             current_user.avatar_url = ''
 
         # --- Persist ---
         current_user.full_name   = full_name
