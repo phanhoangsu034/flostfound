@@ -95,6 +95,13 @@ Quy tắc vận hành code đẩy lên Github (hạn chế vỡ code người kh
 3. Sau khi code xong, thực hiện tuần tự: `git add .` -> `git commit -m "Báo cáo update nội dung gì..."` -> `git push origin feature/ten-cua-ban`.
 4. Trở lại GitHub web trên trình duyệt và tạo Pull Request (PR) để chờ Leader và các anh em test chéo. (Tuyệt đối không push thẳng code lên nhánh `main`).
 
+**📌 Sau này khi pull code về:**
+Đảm bảo thực hiện các bước này (để mới có key upload img lên cloudinary được do cập nhật):
+- **B1:** Vào anti - terminal
+- **B2:** `git pull origin master`
+- **B3:** `copy .env.example .env`
+- **B4:** `python run.py`
+
 ## 💡 8. Giải thích các tính năng quan trọng
 
 ### 1. Nhắn tin liên hệ trực tiếp
