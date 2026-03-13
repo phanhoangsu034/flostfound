@@ -24,22 +24,21 @@ class DevelopmentConfig(Config):
 
 
 class ProductionConfig(Config):
-    """Production configuration – requires DATABASE_URL (Postgres on Render)."""
+    """Production configuration – requires DATABASE_URL (Railway / Render)."""
     DEBUG = False
+
+    # Convert DATABASE_URL at class load time (Railway provides postgres:// scheme)
+    _db_url = os.environ.get('DATABASE_URL', '')
+    if _db_url.startswith("postgres://"):
+        _db_url = _db_url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif _db_url.startswith("postgresql://"):
+        _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    SQLALCHEMY_DATABASE_URI = _db_url or None
+    SECRET_KEY = os.environ.get('SECRET_KEY') or Config.SECRET_KEY
 
     @classmethod
     def init_app(cls, app):
-        if not os.environ.get('SECRET_KEY'):
-            raise ValueError("SECRET_KEY environment variable is required in production")
-        _db_url = os.environ.get('DATABASE_URL')
-        if not _db_url:
-            raise ValueError("DATABASE_URL environment variable is required in production")
-        if _db_url.startswith("postgres://"):
-            _db_url = _db_url.replace("postgres://", "postgresql+psycopg://", 1)
-        elif _db_url.startswith("postgresql://"):
-            _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
-        cls.SQLALCHEMY_DATABASE_URI = _db_url
-        cls.SECRET_KEY = os.environ.get('SECRET_KEY')
+        pass  # All setup is done at class level
 
 
 class TestingConfig(Config):
