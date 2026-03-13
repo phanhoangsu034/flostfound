@@ -270,7 +270,7 @@
                 ? "bg-red-100 text-red-600 border border-red-200"
                 : "bg-green-100 text-green-600 border border-green-200";
             const badgeText = item.item_type === "Lost" ? "Mất đồ" : "Nhặt được";
-            const dateStr = formatDate(item.date_posted);
+            const dateStr = formatDate(item.incident_date || item.date_posted);
             const initial = item.user ? item.user.charAt(0).toUpperCase() : "?";
             const username = item.user || "Ẩn danh";
 

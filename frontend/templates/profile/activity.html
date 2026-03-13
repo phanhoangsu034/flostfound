@@ -40,13 +40,12 @@
                                 onclick="event.stopPropagation();">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ url_for('posts_delete.delete_post', item_id=item.id) }}" method="POST"
-                                onsubmit="event.stopPropagation(); return confirm('Xoá bài đăng này?');">
-                                <button class="text-gray-300 hover:text-red-500 transition p-1" title="Xoá"
-                                    onclick="event.stopPropagation();">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
+                            <button class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg" 
+                                    title="Xoá"
+                                    onclick='confirmDelete(event, {{ item.id }}, {{ item.title|tojson|safe }})'>
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+
                         </div>
                     </div>
                 </div>
@@ -87,13 +86,12 @@
                                 onclick="event.stopPropagation();">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <form action="{{ url_for('posts_delete.delete_post', item_id=item.id) }}" method="POST"
-                                onsubmit="event.stopPropagation(); return confirm('Xoá bài đăng này?');">
-                                <button class="text-gray-300 hover:text-red-500 transition p-1" title="Xoá"
-                                    onclick="event.stopPropagation();">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
+                            <button class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg" 
+                                    title="Xoá"
+                                    onclick='confirmDelete(event, {{ item.id }}, {{ item.title|tojson|safe }})'>
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+
                         </div>
                     </div>
                 </div>
@@ -108,4 +106,71 @@
 
     </div>
 </div>
-{% endblock %}
+
+<script>
+function confirmDelete(event, itemId, title) {
+    if (event) event.stopPropagation();
+    
+    Swal.fire({
+        title: 'Xóa bài đăng?',
+        html: `Bạn có chắc chắn muốn xóa bài <br><b>"${title}"</b>?<br><span class="text-xs text-red-500">Hành động này không thể hoàn tác.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626', // red-600
+        cancelButtonColor: '#9ca3af', // gray-400
+        confirmButtonText: 'Đồng ý, xóa ngay!',
+        cancelButtonText: 'Hủy',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading state
+            Swal.fire({
+                title: 'Đang xử lý...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            fetch(`/post/delete/${itemId}`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        title: 'Đã xóa!',
+                        text: data.message,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    
+                    // Find the card element and remove it with animation
+                    const card = event.target.closest('.group');
+                    if (card) {
+                        card.style.opacity = '0';
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            card.remove();
+                            // If no more items, show empty state (optional improvement)
+                            if (document.querySelectorAll('.group').length === 0) {
+                                location.reload(); // Simplest way to show full empty state
+                            }
+                        }, 300);
+                    }
+                } else {
+                    Swal.fire('Thất bại!', data.message || 'Không thể xóa bài.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Lỗi!', 'Có lỗi kết nối đến máy chủ.', 'error');
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

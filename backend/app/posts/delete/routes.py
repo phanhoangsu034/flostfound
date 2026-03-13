@@ -26,6 +26,11 @@ def delete_post(item_id):
     
     db.session.delete(item)
     db.session.commit()
+    
+    # Return JSON for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+        return {'success': True, 'message': 'Đã xóa bài đăng!'}
+
     flash('Đã xóa bài đăng.', 'success')
     
     # Redirect back to where they came from if possible, or default

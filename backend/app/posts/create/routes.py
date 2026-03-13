@@ -75,27 +75,31 @@ def post_item():
         # Handle Image Uploads
         uploaded_files = request.files.getlist('images')
         saved_images = []
+        upload_errors = []
         
         if uploaded_files:
             import cloudinary.uploader
-            
             for file in uploaded_files:
                 if file and allowed_file(file.filename):
                     try:
+                        import cloudinary
+                        import cloudinary.uploader
                         # Upload directly to Cloudinary
                         upload_result = cloudinary.uploader.upload(file, folder="flostfound/posts")
                         image_url = upload_result.get('secure_url')
-                        
+
                         img_obj = ItemImage(image_url=image_url, item_id=new_item.id)
                         db.session.add(img_obj)
                         saved_images.append(image_url)
                     except Exception as e:
-                        print(f"Error uploading image to cloudinary: {e}")
-            
-            # Set primary image
-            if saved_images:
-                new_item.image_url = saved_images[0]
-                db.session.commit()
+                        err_msg = str(e)
+                        print(f"Error uploading image to cloudinary: {err_msg}")
+                        upload_errors.append(err_msg)
+
+        # Set primary image
+        if saved_images:
+            new_item.image_url = saved_images[0]
+            db.session.commit()
 
         # Log action
         log = ActionLog(user_id=current_user.id, action="Đăng bài", details=f"Tiêu đề: {title}")
@@ -107,10 +111,12 @@ def post_item():
         
         if is_ajax:
             return jsonify({
-                'success': True, 
-                'message': 'Đăng tin thành công!', 
+                'success': True,
+                'message': 'Đăng tin thành công!',
                 'redirect_url': url_for('posts_view.index'),
-                'item_id': new_item.id # Return ID for immediate popup
+                'item_id': new_item.id,
+                'images_uploaded': len(saved_images),
+                'upload_errors': upload_errors  # Show errors in browser DevTools
             })
             
         flash('Đăng tin thành công!', 'success')

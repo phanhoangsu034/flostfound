@@ -29,7 +29,7 @@ def handle_message(data):
     emit('receive_message', {
         'sender_id': current_user.id,
         'message': body,
-        'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M')
+        'timestamp': msg.timestamp.isoformat() + 'Z'
     }, room=room)
     
     # Emit notification to recipient's private room

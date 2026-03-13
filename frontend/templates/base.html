@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,109 +28,131 @@
             visibility: visible;
             transform: translateY(0);
         }
+        /* Mobile menu animation */
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-down {
+            animation: slideDown 0.3s ease-out forwards;
+        }
     </style>
+
 </head>
 
 <body class="flex flex-col min-h-screen"
     data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% endif %}">
 
-    <!-- Navbar -->
-    <nav class="glass-header fixed w-full z-30 top-0">
+    <nav class="glass-header fixed w-full z-40 top-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
 
                 <!-- Brand -->
                 <div class="flex items-center">
                     <a href="{{ url_for('posts_view.index') }}" class="flex-shrink-0 flex items-center">
-                        <span class="text-2xl font-bold text-orange-600">F-LostFound</span>
+                        <span class="text-xl md:text-2xl font-bold text-orange-600">F-LostFound</span>
                     </a>
                 </div>
 
-                <!-- Nav links -->
-                <div class="flex items-center space-x-2">
+                <!-- Desktop Links & Buttons -->
+                <div class="hidden md:flex items-center space-x-2">
                     <a href="{{ url_for('posts_view.index') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Trang
-                        Chủ</a>
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Trang Chủ</a>
                     <a href="{{ url_for('profile.about') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Giới
-                        Thiệu</a>
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Giới Thiệu</a>
                     <a href="{{ url_for('profile.guide') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Hướng
-                        Dẫn</a>
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Hướng Dẫn</a>
 
                     {% if current_user.is_authenticated %}
-
-                    <!-- Post button -->
                     <button type="button" onclick="openCreateModal()"
-                        class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition font-bold text-sm shadow hover:shadow-md">
+                        class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition font-bold text-sm shadow hover:shadow-md ml-2">
                         <i class="fas fa-plus mr-1"></i>Đăng Tin
                     </button>
 
-                    <!-- Notification bell -->
                     <a href="{{ url_for('messages_inbox.messages_inbox') }}"
-                        class="relative text-gray-600 hover:text-orange-600 px-2 py-2">
+                        class="relative text-gray-600 hover:text-orange-600 px-2 py-2 ml-2">
                         <i class="fas fa-bell text-xl"></i>
                         <span id="nav-badge"
-                            class="{% if unread_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-red-100 bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
+                            class="{% if unread_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-red-100 bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
                             {% if unread_count > 0 %}{{ unread_count }}{% else %}!{% endif %}
                         </span>
                     </a>
 
-                    <!-- Account dropdown (hover) -->
-                    <div class="relative dropdown-group">
-                        <!-- Trigger button -->
+                    <div class="relative dropdown-group ml-2">
                         <button type="button"
                             class="flex items-center gap-2 text-gray-700 hover:text-orange-600 px-2 py-2 rounded-md font-medium text-sm transition">
-                            <img src="{{ current_user.avatar }}"
-                                class="w-8 h-8 rounded-full object-cover border-2 border-orange-300 shadow-sm"
-                                alt="{{ current_user.username }}">
-                            <span class="max-w-[90px] truncate">{{ current_user.username }}</span>
-                            <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
+                            <img src="{{ current_user.avatar }}" class="w-8 h-8 rounded-full border-2 border-orange-300" alt="Avatar">
+                            <span class="max-w-[80px] truncate">{{ current_user.username }}</span>
+                            <i class="fas fa-chevron-down text-[10px]"></i>
                         </button>
-
-                        <!-- Dropdown panel -->
-                        <div class="dropdown-menu absolute right-0 top-full pt-2 w-52 opacity-0 invisible
-                                    transition-all duration-200 ease-out transform translate-y-1 z-50">
-                            <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden py-1">
-                                <div class="px-4 py-2 border-b border-gray-50">
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tài Khoản
-                                    </p>
-                                </div>
-                                <a href="{{ url_for('profile.profile') }}"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition">
-                                    <i class="fas fa-user w-4 text-center"></i> Hồ Sơ
-                                </a>
-                                <a href="{{ url_for('profile.activity') }}"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition">
-                                    <i class="fas fa-history w-4 text-center"></i> Quản Lý Hoạt Động
-                                </a>
-                                <a href="{{ url_for('profile.change_password') }}"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-600 transition">
-                                    <i class="fas fa-key w-4 text-center"></i> Đổi Mật Khẩu
-                                </a>
+                        <div class="dropdown-menu absolute right-0 top-full pt-2 w-48 opacity-0 invisible transition-all z-50">
+                            <div class="bg-white rounded-xl shadow-xl border border-gray-100 py-1">
+                                <a href="{{ url_for('profile.profile') }}" class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Hồ Sơ</a>
+                                <a href="{{ url_for('profile.activity') }}" class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt Động</a>
+                                <a href="{{ url_for('profile.change_password') }}" class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Đổi Mật Khẩu</a>
                                 {% if current_user.is_admin %}
-                                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 transition">
-                                    <i class="fas fa-cogs w-4 text-center"></i> Admin Panel
-                                </a>
+                                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
                                 {% endif %}
                                 <div class="border-t border-gray-100 my-1"></div>
-                                <a href="{{ url_for('auth_logout.logout') }}"
-                                    class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 font-semibold transition">
-                                    <i class="fas fa-sign-out-alt w-4 text-center"></i> Đăng Xuất
-                                </a>
+                                <a href="{{ url_for('auth_logout.logout') }}" class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-red-50">Đăng Xuất</a>
                             </div>
                         </div>
                     </div>
-
                     {% else %}
-                    <a href="{{ url_for('auth_login.login') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 font-medium text-sm">Đăng Nhập</a>
-                    <a href="{{ url_for('auth_register.register') }}"
-                        class="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900 transition text-sm font-medium">Đăng
-                        Ký</a>
+                    <a href="{{ url_for('auth_login.login') }}" class="text-gray-700 hover:text-orange-600 px-3 py-2 text-sm font-medium">Đăng Nhập</a>
+                    <a href="{{ url_for('auth_register.register') }}" class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium ml-2">Đăng Ký</a>
                     {% endif %}
                 </div>
+
+                <!-- Mobile Menu Button & Icons -->
+                <div class="flex md:hidden items-center space-x-4">
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('messages_inbox.messages_inbox') }}" class="relative text-gray-600">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span id="nav-badge-mobile" class="{% if unread_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
+                            {{ unread_count }}
+                        </span>
+                    </a>
+                    {% endif %}
+                    
+                    <button type="button" onclick="toggleMobileMenu()" class="text-gray-600 hover:text-orange-600 focus:outline-none">
+                        <i id="mobile-menu-icon" class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Mobile Menu Panel -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-gray-100 shadow-xl overflow-hidden animate-slide-down">
+            <div class="px-4 pt-2 pb-6 space-y-2">
+                <a href="{{ url_for('posts_view.index') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Trang Chủ</a>
+                <a href="{{ url_for('profile.about') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Giới Thiệu</a>
+                <a href="{{ url_for('profile.guide') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Hướng Dẫn</a>
+                
+                {% if current_user.is_authenticated %}
+                <div class="border-t border-gray-100 my-2"></div>
+                <button onclick="openCreateModal(); toggleMobileMenu();" class="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-3 rounded-xl font-bold mb-4">
+                    <i class="fas fa-plus"></i> Đăng Tin
+                </button>
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">Tài Khoản</p>
+                <a href="{{ url_for('profile.profile') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Hồ Sơ</a>
+                <a href="{{ url_for('profile.activity') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý Hoạt Động</a>
+                <a href="{{ url_for('profile.change_password') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Đổi Mật Khẩu</a>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin Panel</a>
+                {% endif %}
+                <a href="{{ url_for('auth_logout.logout') }}" class="block px-3 py-3 rounded-xl text-base font-bold text-red-600 hover:bg-red-50">Đăng Xuất</a>
+                {% else %}
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <a href="{{ url_for('auth_login.login') }}" class="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-bold">Đăng Nhập</a>
+                    <a href="{{ url_for('auth_register.register') }}" class="flex items-center justify-center px-4 py-3 bg-gray-800 text-white rounded-xl font-bold">Đăng Ký</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+/div>
 
             </div>
         </div>
@@ -136,6 +160,10 @@
 
     <!-- Toast Notifications -->
     <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col space-y-4">
+        <!-- Audio for global notifications -->
+        <audio id="globalNotifSound" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
+
+
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, message in messages %}
@@ -193,7 +221,24 @@
     {% include 'posts/create_modal.html' %}
 
     <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const icon = document.getElementById('mobile-menu-icon');
+            const isHidden = menu.classList.contains('hidden');
+            
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                menu.classList.add('hidden');
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+
             // Auto-dismiss toasts
             document.querySelectorAll('.toast-message').forEach(toast => {
                 setTimeout(() => {
@@ -206,18 +251,31 @@
             const socket = io();
             socket.on('connect', () => socket.emit('join_notifications'));
             socket.on('notification', (data) => {
+                // Play notification sound
+                const globalSound = document.getElementById('globalNotifSound');
+                if (globalSound) globalSound.play().catch(e => console.log("Audio play blocked by browser"));
+
                 document.getElementById('nav-badge').classList.remove('hidden');
                 document.getElementById('bubble-badge').classList.remove('hidden');
 
+
                 const container = document.getElementById('toast-container');
                 const toast = document.createElement('div');
-                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] bg-blue-500';
+                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] bg-blue-600 border-l-4 border-white';
+                
+                const now = new Date();
+                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
                 toast.innerHTML = `
-                <i class="fas fa-comment mr-3 text-xl"></i>
-                <div class="flex flex-col">
-                    <span class="font-bold text-sm">${data.sender_name}</span>
-                    <span class="text-xs truncate max-w-xs">${data.message}</span>
+                <i class="fas fa-comment-dots mr-3 text-xl"></i>
+                <div class="flex-grow">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-sm">${data.sender_name}</span>
+                        <span class="text-[10px] opacity-80">${timeStr}</span>
+                    </div>
+                    <span class="text-xs truncate block max-w-[200px]">${data.message}</span>
                 </div>`;
+
                 container.appendChild(toast);
                 setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 4000);
             });
