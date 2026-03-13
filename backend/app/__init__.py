@@ -19,6 +19,12 @@ def create_app(config_name=None):
     
     # Ensure instance folder exists
     os.makedirs(app.config['INSTANCE_DIR'], exist_ok=True)
+
+    # Initialize Cloudinary from CLOUDINARY_URL environment variable
+    cloudinary_url = os.environ.get('CLOUDINARY_URL')
+    if cloudinary_url:
+        import cloudinary
+        cloudinary.config(cloudinary_url=cloudinary_url)
     
     # Initialize extensions
     from app.extensions import db, login_manager, socketio
