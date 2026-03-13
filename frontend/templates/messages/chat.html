@@ -104,7 +104,10 @@
         // Play sound if not from me
         if (!isMe) {
             const sound = document.getElementById('notifSound');
-            if (sound) sound.play().catch(e => console.log("Audio play blocked by browser"));
+            if (sound) {
+                sound.volume = 1.0;
+                sound.play().catch(e => console.log("Audio play blocked by browser"));
+            }
         }
 
         const div = document.createElement('div');

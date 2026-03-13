@@ -253,7 +253,10 @@
             socket.on('notification', (data) => {
                 // Play notification sound
                 const globalSound = document.getElementById('globalNotifSound');
-                if (globalSound) globalSound.play().catch(e => console.log("Audio play blocked by browser"));
+                if (globalSound) {
+                    globalSound.volume = 1.0;
+                    globalSound.play().catch(e => console.log("Audio play blocked by browser"));
+                }
 
                 document.getElementById('nav-badge').classList.remove('hidden');
                 document.getElementById('bubble-badge').classList.remove('hidden');
