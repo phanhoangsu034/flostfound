@@ -24,7 +24,9 @@ class DevelopmentConfig(Config):
 
 
 class ProductionConfig(Config):
-    """Production configuration – requires DATABASE_URL (Railway / Render)."""
+    """Production configuration – Railway / Render.
+    Falls back to SQLite if DATABASE_URL is not yet configured.
+    """
     DEBUG = False
 
     # Convert DATABASE_URL at class load time (Railway provides postgres:// scheme)
@@ -33,7 +35,12 @@ class ProductionConfig(Config):
         _db_url = _db_url.replace("postgres://", "postgresql+psycopg://", 1)
     elif _db_url.startswith("postgresql://"):
         _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
-    SQLALCHEMY_DATABASE_URI = _db_url or None
+
+    # Fallback to SQLite so the app can start even without Postgres
+    SQLALCHEMY_DATABASE_URI = (
+        _db_url
+        or 'sqlite:///' + os.path.join(Config.INSTANCE_DIR, 'flostfound.db')
+    )
     SECRET_KEY = os.environ.get('SECRET_KEY') or Config.SECRET_KEY
 
     @classmethod
