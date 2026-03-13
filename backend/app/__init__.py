@@ -27,16 +27,17 @@ def create_app(config_name=None):
     login_manager.login_view = 'auth_login.login'
     socketio.init_app(app)
 
-    # Create DB tables on first run (works with both gunicorn and dev server)
-    with app.app_context():
-        db.create_all()
-    
     # Register core hooks
     from app.core.hooks import register_hooks
     register_hooks(app)
     
-    # Register blueprints
+    # Register blueprints (this imports all model classes)
     register_blueprints(app)
+
+    # Create DB tables AFTER blueprints are registered
+    # so all models (User, Item, etc.) are already imported
+    with app.app_context():
+        db.create_all()
     
     return app
 
