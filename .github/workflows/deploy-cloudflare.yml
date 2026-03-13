@@ -1,33 +1,19 @@
-name: Build and deploy to Cloudflare Workers
+# Cloudflare workflow disabled – project is deployed on Railway
+# Railway auto-deploys from GitHub on every push to master.
+# This file is kept to avoid breaking existing GitHub Actions references.
+
+name: CI – Lint check (placeholder)
 
 on:
   push:
     branches: ["master"]
 
 jobs:
-  build-and-deploy:
+  info:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
-      - name: Install and build frontend
+      - name: Deployment info
         run: |
-          npm ci --prefix frontend
-          npm run build --prefix frontend
-
-      - name: Install wrangler
-        run: npm install -g wrangler@2
-
-      - name: Publish to Cloudflare Workers (site)
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          # Ensure account id is provided by secret or wrangler.toml
-          wrangler publish --site frontend/dist --account-id $CF_ACCOUNT_ID --compatibility-date 2026-03-12
+          echo "✅ Code pushed to master."
+          echo "🚂 Railway will auto-deploy this commit."
+          echo "📌 Cloudflare deployment is disabled (Flask backend not supported)."
