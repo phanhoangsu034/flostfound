@@ -3,6 +3,8 @@ Search & Filter business logic.
 Handles fuzzy matching, synonym expansion, filtering, sorting, and pagination.
 """
 from difflib import SequenceMatcher
+import unicodedata
+from datetime import datetime, timedelta
 from sqlalchemy import or_, func
 from app.models.item import Item
 from app.search.synonyms import expand_query
@@ -12,9 +14,18 @@ from app.search.synonyms import expand_query
 # Fuzzy helpers
 # ---------------------------------------------------------------------------
 
+def remove_accents(input_str: str) -> str:
+    """Remove Vietnamese accents for robust searching."""
+    if not input_str:
+        return ""
+    # Normalize unicode characters
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    # Keep only non-combining characters
+    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
 def _fuzzy_ratio(a: str, b: str) -> float:
     """Return similarity ratio (0.0 – 1.0) between two strings."""
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+    return SequenceMatcher(None, remove_accents(a.lower()), remove_accents(b.lower())).ratio()
 
 
 def _text_contains_any(text: str, terms: list[str], fuzzy_threshold: float = 0.65) -> tuple[bool, float]:
@@ -22,9 +33,10 @@ def _text_contains_any(text: str, terms: list[str], fuzzy_threshold: float = 0.6
     Check if *text* contains (or fuzzy-matches) any of the *terms*.
     Returns (matched: bool, best_score: float).
     """
-    text_lower = text.lower()
+    text_lower = remove_accents(text.lower())
+    terms_normalized = [remove_accents(t.lower()) for t in terms]
     best = 0.0
-    for term in terms:
+    for term in terms_normalized:
         # Exact substring match → perfect score
         if term in text_lower:
             return True, 1.0
@@ -47,6 +59,7 @@ def search_items(
     location: str = "",         # Building / area
     specific_location: str = "",# Room / floor
     category: str = "",
+    date_range: str = "",       # "today" | "3days" | "7days" | "30days"
     sort: str = "newest",       # "newest" | "oldest" | "relevance"
     page: int = 1,
     per_page: int = 12,
@@ -76,6 +89,22 @@ def search_items(
     if category:
         q = q.filter(func.lower(Item.category) == category.lower())
 
+    if date_range:
+        now = datetime.utcnow()
+        if date_range == "today":
+            cutoff = now - timedelta(days=1)
+        elif date_range == "3days":
+            cutoff = now - timedelta(days=3)
+        elif date_range == "7days":
+            cutoff = now - timedelta(days=7)
+        elif date_range == "30days":
+            cutoff = now - timedelta(days=30)
+        else:
+            cutoff = None
+
+        if cutoff:
+            q = q.filter(or_(Item.date_posted >= cutoff, Item.incident_date >= cutoff))
+
     # --- Text search (fuzzy + synonym expansion) ---
     if query.strip():
         expanded_terms = expand_query(query)
@@ -91,8 +120,9 @@ def search_items(
         # Get candidate items matching DB-level LIKE
         db_items = q.filter(or_(*or_conditions)).all() if or_conditions else []
 
-        # Also get ALL items passing hard filters for fuzzy fallback
-        all_hard_filtered = q.all()
+        # Also get a limited fallback list for fuzzy matching instead of all()
+        # Fallback to the latest 200 items that match hard filters to prevent loading all into RAM
+        all_hard_filtered = q.order_by(Item.date_posted.desc()).limit(200).all()
 
         # Merge: DB matches + fuzzy matches from remaining items
         seen_ids = {item.id for item in db_items}
@@ -152,12 +182,32 @@ def search_items(
 
     total_pages = max(1, (total + per_page - 1) // per_page)
 
+    # Dynamic counts for Lost and Found items matching current non-type query
+    # (Excluding item_type filter so we can show counts for both tabs)
+    count_q = Item.query
+    if status:
+        count_q = count_q.filter(Item.status == status)
+    else:
+        count_q = count_q.filter(Item.status == "Open")
+    if location: count_q = count_q.filter(func.lower(Item.location) == location.lower())
+    if specific_location: count_q = count_q.filter(func.lower(Item.specific_location) == specific_location.lower())
+    if category: count_q = count_q.filter(func.lower(Item.category) == category.lower())
+    if 'cutoff' in locals() and cutoff:
+        count_q = count_q.filter(or_(Item.date_posted >= cutoff, Item.incident_date >= cutoff))
+
+    lost_count = count_q.filter(Item.item_type == 'Lost').count()
+    found_count = count_q.filter(Item.item_type == 'Found').count()
+
     return {
         "items": [item.to_dict() for item in page_items],
         "total": total,
         "page": page,
         "per_page": per_page,
         "total_pages": total_pages,
+        "counts": {
+            "lost": lost_count,
+            "found": found_count
+        }
     }
 
 
@@ -208,35 +258,35 @@ def autocomplete(query: str, max_keywords: int = 5, max_items: int = 3):
 
 def get_locations_hierarchy():
     """
-    Return distinct locations grouped hierarchically:
-    [{ "name": "Alpha", "sub_locations": ["Phòng 101", "Phòng 201", ...] }, ...]
+    Return static hierarchical location list for FPTU.
     """
-    items = Item.query.with_entities(
-        Item.location, Item.specific_location
-    ).distinct().all()
-
-    loc_map = {}
-    for loc, sub in items:
-        if not loc:
-            continue
-        loc_key = loc.strip()
-        if loc_key not in loc_map:
-            loc_map[loc_key] = set()
-        if sub and sub.strip():
-            loc_map[loc_key].add(sub.strip())
-
     return [
-        {"name": name, "sub_locations": sorted(list(subs))}
-        for name, subs in sorted(loc_map.items())
+        {"name": "Tòa nhà", "sub_locations": ["Alpha", "Beta", "Delta", "Epsilon", "Gamma"]},
+        {"name": "Canteen", "sub_locations": ["Canteen 1", "Canteen 2"]},
+        {"name": "Dọc đường 30m", "sub_locations": []},
+        {"name": "Dom", "sub_locations": ["Dom A", "Dom B", "Dom C", "Dom D", "Dom E", "Dom F", "Dom G", "Dom H", "Dom I"]},
+        {"name": "Sân bóng", "sub_locations": ["Sân bóng 1", "Sân bóng 2", "Sân bóng 3"]},
+        {"name": "Nhà xe", "sub_locations": []},
+        {"name": "Hồ", "sub_locations": ["Hồ tình yêu", "Hồ thiên nga"]},
+        {"name": "Khác", "sub_locations": []}
     ]
 
 
 def get_categories():
-    """Return list of distinct category names from items."""
+    """Return list of category names."""
     from app.models.category import Category
     cats = Category.query.order_by(Category.name).all()
     if cats:
         return [c.name for c in cats]
-    # Fallback: distinct categories from items
-    rows = Item.query.with_entities(Item.category).distinct().all()
-    return sorted([r[0] for r in rows if r[0]])
+    
+    # Fallback to standard categories if DB is empty
+    return [
+        "Ví / Bóp",
+        "Chìa khóa",
+        "Thẻ xe / Thẻ sinh viên",
+        "Giấy tờ tùy thân",
+        "Điện thoại / Laptop",
+        "Đồ dùng học tập / Sách vở",
+        "Quần áo / Phụ kiện",
+        "Khác"
+    ]

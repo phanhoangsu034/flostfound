@@ -28,8 +28,9 @@ SYNONYM_GROUPS = [
     ["ô", "dù", "ô dù", "umbrella"],
     # Bottle
     ["bình nước", "chai nước", "binh nuoc", "chai", "bình giữ nhiệt"],
-    # Card / ID
-    ["thẻ", "thẻ ngân hàng", "thẻ atm", "cmnd", "cccd", "căn cước", "chứng minh"],
+    # Bank Card / ID - Separater banking cards and ID cards
+    ["thẻ ngân hàng", "thẻ atm", "bank card", "thẻ tín dụng", "credit card", "visa", "mastercard"],
+    ["cmnd", "cccd", "căn cước", "chứng minh", "id card"],
     # USB / Flash drive
     ["usb", "flash drive", "ổ cứng", "ổ đĩa", "thẻ nhớ", "memory card"],
     # Motorcycle helmet
@@ -42,6 +43,14 @@ SYNONYM_GROUPS = [
     ["đồng hồ", "dong ho", "watch", "smartwatch"],
     # Vehicle card / Parking card
     ["thẻ xe", "the xe", "thẻ gửi xe", "vé xe"],
+    # Books / Notebooks
+    ["sách", "vở", "sách vở", "book", "notebook", "tài liệu", "giáo trình"],
+    # Fan
+    ["quạt", "quạt mini", "quạt cầm tay", "fan"],
+    # Speaker
+    ["loa", "loa bluetooth", "loa mini", "speaker"],
+    # Powerbank
+    ["sạc dự phòng", "pin dự phòng", "powerbank", "trạm sạc"],
 ]
 
 
