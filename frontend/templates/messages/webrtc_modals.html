@@ -99,7 +99,7 @@
 </div>
 
 <script>
-    const webrtc_currentUserId = {{ current_user.id }};
+    const webrtc_currentUserId = parseInt("{{ current_user.id }}");
     let globalCallState = {
         isCalling: false,
         isVideoCall: true,
@@ -117,7 +117,8 @@
 
     const iceServers = {
         iceServers: [
-            { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+            { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302', 'stun:stun3.l.google.com:19302', 'stun:stun4.l.google.com:19302'] },
+            { urls: ['stun:stun.services.mozilla.com'] }
         ]
     };
 
@@ -208,11 +209,17 @@
         globalCallState.peerConnection.ontrack = (event) => {
             if (event.streams && event.streams[0]) {
                 const stream = event.streams[0];
-                remoteVideo.srcObject = stream;
                 
+                // Add tracks to our existing remoteStream
+                stream.getTracks().forEach(track => {
+                    if (!globalCallState.remoteStream.getTracks().find(t => t.id === track.id)) {
+                        globalCallState.remoteStream.addTrack(track);
+                    }
+                });
+
                 // Monitor track states to auto-hide/show background
                 const checkVideoVisibility = () => {
-                    const hasActiveVideo = stream.getVideoTracks().some(t => t.enabled && !t.muted);
+                    const hasActiveVideo = globalCallState.remoteStream.getVideoTracks().some(t => t.enabled && !t.muted);
                     if (hasActiveVideo) {
                         voiceCallBg.classList.add('hidden');
                     } else {
@@ -221,7 +228,7 @@
                 };
 
                 checkVideoVisibility();
-                stream.getVideoTracks().forEach(track => {
+                globalCallState.remoteStream.getVideoTracks().forEach(track => {
                     track.onunmute = checkVideoVisibility;
                     track.onmute = checkVideoVisibility;
                     track.onended = checkVideoVisibility;

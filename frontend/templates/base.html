@@ -152,11 +152,6 @@
             </div>
         </div>
     </nav>
-/div>
-
-            </div>
-        </div>
-    </nav>
 
     <!-- Toast Notifications -->
     <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col space-y-4">
@@ -249,6 +244,19 @@
             });
 
             {% if current_user.is_authenticated %}
+            // Unlock audio on first user interaction
+            const unlockAudio = () => {
+                const ringtone = document.getElementById('incomingRingtone');
+                if (ringtone) {
+                    ringtone.play().then(() => {
+                        ringtone.pause();
+                        ringtone.currentTime = 0;
+                    }).catch(e => {});
+                }
+                document.removeEventListener('click', unlockAudio);
+            };
+            document.addEventListener('click', unlockAudio);
+
             window.globalSocket = io();
             window.globalSocket.on('connect', () => window.globalSocket.emit('join_notifications'));
             window.globalSocket.on('notification', (data) => {
