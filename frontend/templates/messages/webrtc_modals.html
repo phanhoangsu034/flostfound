@@ -112,7 +112,8 @@
         peerConnection: null,
         isMicMuted: false,
         isCamOff: false,
-        pendingSignal: null
+        pendingSignal: null,
+        iceCandidateQueue: []
     };
 
     let globalIceConfig = {
@@ -220,36 +221,40 @@
         }
 
         globalCallState.peerConnection.ontrack = (event) => {
+            let stream;
             if (event.streams && event.streams[0]) {
-                const stream = event.streams[0];
-                
-                // Add tracks to our existing remoteStream
-                stream.getTracks().forEach(track => {
-                    if (!globalCallState.remoteStream.getTracks().find(t => t.id === track.id)) {
-                        globalCallState.remoteStream.addTrack(track);
-                    }
-                });
-
-                // Dành cho Mobile/Safari: Ép bật media ngay khi track đã vô
-                remoteVideo.play().catch(e => console.log("Auto-play error", e));
-
-                // Monitor track states to auto-hide/show background
-                const checkVideoVisibility = () => {
-                    const hasActiveVideo = globalCallState.remoteStream.getVideoTracks().some(t => t.enabled && !t.muted);
-                    if (hasActiveVideo) {
-                        voiceCallBg.classList.add('hidden');
-                    } else {
-                        voiceCallBg.classList.remove('hidden');
-                    }
-                };
-
-                checkVideoVisibility();
-                globalCallState.remoteStream.getVideoTracks().forEach(track => {
-                    track.onunmute = checkVideoVisibility;
-                    track.onmute = checkVideoVisibility;
-                    track.onended = checkVideoVisibility;
-                });
+                stream = event.streams[0];
+            } else {
+                if (!globalCallState.remoteStream) {
+                    globalCallState.remoteStream = new MediaStream();
+                }
+                globalCallState.remoteStream.addTrack(event.track);
+                stream = globalCallState.remoteStream;
             }
+            
+            if (remoteVideo.srcObject !== stream) {
+                remoteVideo.srcObject = stream;
+            }
+
+            // Dành cho Mobile/Safari: Ép bật media ngay khi track đã vô
+            remoteVideo.play().catch(e => console.log("Auto-play error", e));
+
+            // Monitor track states to auto-hide/show background
+            const checkVideoVisibility = () => {
+                const hasActiveVideo = stream.getVideoTracks().some(t => t.enabled && !t.muted);
+                if (hasActiveVideo) {
+                    voiceCallBg.classList.add('hidden');
+                } else {
+                    voiceCallBg.classList.remove('hidden');
+                }
+            };
+
+            checkVideoVisibility();
+            stream.getVideoTracks().forEach(track => {
+                track.onunmute = checkVideoVisibility;
+                track.onmute = checkVideoVisibility;
+                track.onended = checkVideoVisibility;
+            });
         };
 
         globalCallState.peerConnection.onicecandidate = (event) => {
@@ -260,6 +265,17 @@
                 });
             }
         };
+
+        globalCallState.peerConnection.onconnectionstatechange = () => {
+            console.log("Trạng thái mạng WebRTC: ", globalCallState.peerConnection.connectionState);
+            if (globalCallState.peerConnection.connectionState === 'connected') {
+                document.getElementById('callStatusText').classList.replace('bg-green-500/80', 'bg-blue-600/80');
+                remoteVideo.play().catch(e => {}); // Đảm bảo lại một lần nữa
+            } else if (globalCallState.peerConnection.connectionState === 'failed' || globalCallState.peerConnection.connectionState === 'disconnected') {
+                document.getElementById('callStatusText').classList.replace('bg-blue-600/80', 'bg-red-500/80');
+                document.getElementById('callStatusText').innerText = "Mất kết nối mạng...";
+            }
+        };
     }
 
     function closeCall() {
@@ -268,6 +284,7 @@
         clearTimeout(globalCallState.ringingTimeout);
         globalCallState.startTime = null;
         globalCallState.pendingSignal = null;
+        globalCallState.iceCandidateQueue = [];
 
         stopRingtones();
         outgoingCallModal.classList.add('hidden');
@@ -296,14 +313,22 @@
             globalCallState.remoteStream.getTracks().forEach(track => track.stop());
             globalCallState.remoteStream = null;
         }
+
+        remoteVideo.srcObject = null;
+        localVideo.srcObject = null;
     }
 
     // Giao diện Khởi tạo Cuộc gọi toàn cục (Gọi ra ngoài)
     window.startWebRTCCall = async (targetId, targetUsername, targetAvatar, isVideo) => {
+        // [iOS Safari Hack]: Mở khóa Audio/Video Context bằng một thao tác giả (Dummy Play) ngay trong thân hàm sự kiện Click.
+        remoteVideo.play().catch(e => {});
+        localVideo.play().catch(e => {});
+
         if (globalCallState.isCalling) return;
 
         globalCallState.isVideoCall = isVideo;
         globalCallState.recipientId = targetId;
+        globalCallState.iceCandidateQueue = [];
 
         const hasMedia = await globalInitMedia(isVideo);
         if (!hasMedia) return;
@@ -345,6 +370,7 @@
             globalCallState.recipientId = data.from;
             globalCallState.isVideoCall = data.is_video !== undefined ? data.is_video : true;
             globalCallState.pendingSignal = data.signal;
+            globalCallState.iceCandidateQueue = [];
 
             document.getElementById('incomingType').innerText = globalCallState.isVideoCall ? "video" : "thoại";
             document.getElementById('incomingTypeIcon').className = globalCallState.isVideoCall ? "fas fa-video ml-1" : "fas fa-phone-volume ml-1 animate-bounce";
@@ -395,12 +421,22 @@
                 }, 1000);
 
                 await globalCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+                
+                // Add queued ICE candidates
+                while (globalCallState.iceCandidateQueue.length > 0) {
+                    let candidate = globalCallState.iceCandidateQueue.shift();
+                    globalCallState.peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log(e));
+                }
             }
         });
 
         window.globalSocket.on('ice_candidate', (data) => {
-            if (data.from == globalCallState.recipientId && globalCallState.isCalling && globalCallState.peerConnection) {
-                globalCallState.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            if (data.from == globalCallState.recipientId) {
+                if (globalCallState.peerConnection && globalCallState.peerConnection.remoteDescription) {
+                    globalCallState.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(e => console.log(e));
+                } else {
+                    globalCallState.iceCandidateQueue.push(data.candidate);
+                }
             }
         });
 
@@ -440,6 +476,10 @@
     });
 
     async function handleAcceptCall(withVideo) {
+        // [iOS Safari Hack]: Mở khóa Audio/Video Context bằng một thao tác giả
+        remoteVideo.play().catch(e => {});
+        localVideo.play().catch(e => {});
+
         stopRingtones();
         incomingCallModal.classList.add('hidden');
 
@@ -463,6 +503,13 @@
         // Map cấu hình của người gọi cho mình
         if (globalCallState.pendingSignal) {
             await globalCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(globalCallState.pendingSignal));
+            
+            // Add queued ICE candidates
+            while (globalCallState.iceCandidateQueue.length > 0) {
+                let candidate = globalCallState.iceCandidateQueue.shift();
+                globalCallState.peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log(e));
+            }
+
             let answer = await globalCallState.peerConnection.createAnswer();
             await globalCallState.peerConnection.setLocalDescription(answer);
 
