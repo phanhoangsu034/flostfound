@@ -1,0 +1,517 @@
+{% if current_user.is_authenticated %}
+<!-- Audio for Ringtones -->
+<audio id="incomingRingtone" src="https://upload.wikimedia.org/wikipedia/commons/3/36/Ringtone_classic.ogg" loop
+    preload="auto"></audio>
+<audio id="outgoingRingtone" src="https://upload.wikimedia.org/wikipedia/commons/4/4c/UK_ringback_tone.ogg" loop
+    preload="auto"></audio>
+
+<!-- Outgoing Call Modal (Zalo style) -->
+<div id="outgoingCallModal"
+    class="hidden fixed inset-0 bg-black/60 z-[70] flex items-center justify-center backdrop-blur-sm">
+    <div
+        class="bg-gray-900 rounded-3xl p-8 w-80 shadow-2xl transform transition-all text-center border border-gray-700 bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/static/team_photo.png');">
+        <div class="w-24 h-24 rounded-full bg-gray-700 mx-auto flex items-center justify-center mb-6 relative">
+            <img id="outgoingAvatar" src="" class="w-full h-full rounded-full object-cover z-10">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-30 animate-ping"></span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-2" id="outgoingNameDisplay">Người dùng</h3>
+        <p class="text-orange-400 text-sm mb-8 animate-pulse">Đang gọi <span id="outgoingType">video</span>...</p>
+        <div class="flex justify-center">
+            <button id="cancelCallBtn"
+                class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white hover:bg-red-700 shadow-[0_0_15px_rgba(220,38,38,0.5)] transition hover:scale-110">
+                <i class="fas fa-phone border-2 border-transparent" style="transform: rotate(135deg);"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Incoming Call Modal -->
+<div id="incomingCallModal"
+    class="hidden fixed inset-0 bg-black/60 z-[70] flex items-center justify-center backdrop-blur-sm">
+    <div
+        class="bg-gray-900 rounded-3xl p-8 w-80 shadow-2xl transform transition-all text-center border border-gray-700 bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/static/team_photo.png');">
+        <div
+            class="w-24 h-24 rounded-full bg-gray-700 mx-auto flex items-center justify-center mb-6 relative hover:scale-105 transition">
+            <img id="incomingAvatar" src="" class="w-full h-full rounded-full object-cover z-10 hidden">
+            <i id="incomingDefaultAvatar" class="fas fa-user-circle text-6xl text-gray-500 z-10"></i>
+            <span class="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-30 animate-ping"></span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-2" id="callerNameDisplay">Someone</h3>
+        <p class="text-green-400 text-sm mb-8 animate-pulse">Đang có cuộc gọi <span id="incomingType">video</span>
+            tới... <i id="incomingTypeIcon" class="fas fa-video ml-1"></i></p>
+        <div class="flex justify-center gap-4 mt-4">
+            <button id="rejectCallBtn"
+                class="w-14 h-14 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-red-600 hover:scale-110 transition"
+                title="Từ chối"><i class="fas fa-phone-slash text-xl"></i></button>
+            <button id="acceptVoiceBtn"
+                class="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/50 hover:bg-green-600 hover:scale-110 transition"
+                title="Nghe Thoại"><i class="fas fa-phone text-xl"></i></button>
+            <button id="acceptVideoBtn"
+                class="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-green-500/50 hover:bg-green-600 hover:scale-110 transition"
+                title="Nghe Video"><i class="fas fa-video text-xl"></i></button>
+        </div>
+    </div>
+</div>
+
+<!-- Active Call Screen -->
+<div id="activeCallScreen" class="hidden fixed inset-0 bg-gray-950 z-[60] flex flex-col items-center justify-center">
+    <!-- Nền thoại thay thế Camera -->
+    <div id="voiceCallBg" class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-0 bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/team_photo.png');">
+        <div class="w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center mb-6 shadow-lg">
+            <i class="fas fa-user text-6xl text-gray-500"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-white mb-2" id="voiceCallName">Người dùng</h2>
+        <p class="text-orange-400 animate-pulse text-sm">Cuộc gọi thoại bảo mật cấp cao</p>
+    </div>
+
+    <!-- Remote Video -->
+    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover z-10 relative"></video>
+
+    <!-- Local Video -->
+    <div id="localVideoContainer"
+        class="absolute top-4 right-4 w-32 h-44 bg-gray-800 rounded-xl overflow-hidden border-2 border-orange-500 shadow-2xl z-10 transition-transform">
+        <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
+    </div>
+
+    <div id="callStatusText"
+        class="absolute top-4 left-4 bg-black/50 text-white px-4 py-2 rounded-full backdrop-blur-sm text-sm font-medium z-10 transition-colors duration-500 border border-gray-600">
+        Đang kết nối...</div>
+
+    <!-- Toolbars -->
+    <div
+        class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-3 sm:gap-6 z-[20] bg-black/60 px-4 sm:px-8 py-3 sm:py-4 rounded-full backdrop-blur-md border border-gray-600 w-max max-w-[90%]">
+        <button id="toggleWebRtcMicBtn"
+            class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"><i
+                class="fas fa-microphone text-lg sm:text-xl"></i></button>
+        <button id="toggleSpeakerBtn"
+            class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"
+            title="Bật/Tắt Loa Ngoài"><i class="fas fa-volume-up text-lg sm:text-xl"></i></button>
+        <button id="hangupBtn"
+            class="w-12 h-12 sm:w-16 sm:h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white transition shadow-[0_0_15px_rgba(220,38,38,0.5)] transform hover:scale-110"><i
+                class="fas fa-phone border-2 border-transparent" style="transform: rotate(135deg);"></i></button>
+        <button id="toggleWebRtcCamBtn"
+            class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"><i
+                class="fas fa-video text-lg sm:text-xl"></i></button>
+        <button id="minimizeBtn"
+            class="w-10 h-10 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-white transition"
+            title="Chat Song Song (Thu nhỏ)"><i class="fas fa-compress-alt text-lg sm:text-xl"></i></button>
+    </div>
+</div>
+
+<script>
+    const webrtc_currentUserId = {{ current_user.id }};
+    let globalCallState = {
+        isCalling: false,
+        isVideoCall: true,
+        recipientId: null,
+        startTime: null,
+        durationInterval: null,
+        ringingTimeout: null,
+        localStream: null,
+        remoteStream: null,
+        peerConnection: null,
+        isMicMuted: false,
+        isCamOff: false,
+        pendingSignal: null
+    };
+
+    const iceServers = {
+        iceServers: [
+            { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+        ]
+    };
+
+    // Xin quyền Desktop Push Notification
+    document.addEventListener('DOMContentLoaded', () => {
+        if ("Notification" in window && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+
+        let webrtcRetries = 0;
+        const checkSocket = setInterval(() => {
+            if (window.globalSocket) {
+                clearInterval(checkSocket);
+                initWebRTCSocketEvents();
+            }
+            if (webrtcRetries++ > 20) clearInterval(checkSocket);
+        }, 500);
+    });
+
+    const incomingRingtone = document.getElementById('incomingRingtone');
+    const outgoingRingtone = document.getElementById('outgoingRingtone');
+    const outgoingCallModal = document.getElementById('outgoingCallModal');
+    const incomingCallModal = document.getElementById('incomingCallModal');
+    const activeCallScreen = document.getElementById('activeCallScreen');
+    const voiceCallBg = document.getElementById('voiceCallBg');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const localVideoContainer = document.getElementById('localVideoContainer');
+
+    function stopRingtones() {
+        incomingRingtone.pause(); incomingRingtone.currentTime = 0;
+        outgoingRingtone.pause(); outgoingRingtone.currentTime = 0;
+    }
+
+    async function globalInitMedia(video = true) {
+        try {
+            // Always try to get both so it's possible to toggle later, but handle lack of camera
+            let constraints = { audio: true, video: true };
+            try {
+                globalCallState.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (vErr) {
+                console.log("No camera found or denied, falling back to audio only", vErr);
+                globalCallState.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            }
+
+            const hasVideoTrack = globalCallState.localStream.getVideoTracks().length > 0;
+            
+            if (hasVideoTrack) {
+                localVideo.srcObject = globalCallState.localStream;
+                if (video) {
+                    globalCallState.isCamOff = false;
+                    globalCallState.localStream.getVideoTracks()[0].enabled = true;
+                    localVideoContainer.classList.remove('hidden');
+                    voiceCallBg.classList.add('hidden');
+                    document.getElementById('toggleWebRtcCamBtn').innerHTML = '<i class="fas fa-video text-xl"></i>';
+                } else {
+                    globalCallState.isCamOff = true;
+                    globalCallState.localStream.getVideoTracks()[0].enabled = false;
+                    localVideoContainer.classList.add('hidden');
+                    voiceCallBg.classList.remove('hidden');
+                    document.getElementById('toggleWebRtcCamBtn').innerHTML = '<i class="fas fa-video-slash text-xl text-red-500"></i>';
+                }
+                document.getElementById('toggleWebRtcCamBtn').classList.remove('hidden');
+            } else {
+                localVideoContainer.classList.add('hidden');
+                voiceCallBg.classList.remove('hidden');
+                document.getElementById('toggleWebRtcCamBtn').classList.add('hidden');
+            }
+            return true;
+        } catch (error) {
+            alert("Không thể truy cập Microphone! Vui lòng cho phép quyền trên trình duyệt.");
+            console.error(error);
+            return false;
+        }
+    }
+
+    function createGlobalPeerConnection() {
+        globalCallState.peerConnection = new RTCPeerConnection(iceServers);
+        globalCallState.remoteStream = new MediaStream();
+        remoteVideo.srcObject = globalCallState.remoteStream;
+
+        if (globalCallState.localStream) {
+            globalCallState.localStream.getTracks().forEach((track) => {
+                globalCallState.peerConnection.addTrack(track, globalCallState.localStream);
+            });
+        }
+
+        globalCallState.peerConnection.ontrack = (event) => {
+            if (event.streams && event.streams[0]) {
+                const stream = event.streams[0];
+                remoteVideo.srcObject = stream;
+                
+                // Monitor track states to auto-hide/show background
+                const checkVideoVisibility = () => {
+                    const hasActiveVideo = stream.getVideoTracks().some(t => t.enabled && !t.muted);
+                    if (hasActiveVideo) {
+                        voiceCallBg.classList.add('hidden');
+                    } else {
+                        voiceCallBg.classList.remove('hidden');
+                    }
+                };
+
+                checkVideoVisibility();
+                stream.getVideoTracks().forEach(track => {
+                    track.onunmute = checkVideoVisibility;
+                    track.onmute = checkVideoVisibility;
+                    track.onended = checkVideoVisibility;
+                });
+            }
+        };
+
+        globalCallState.peerConnection.onicecandidate = (event) => {
+            if (event.candidate && window.globalSocket) {
+                window.globalSocket.emit('ice_candidate', {
+                    to: globalCallState.recipientId,
+                    candidate: event.candidate
+                });
+            }
+        };
+    }
+
+    function closeCall() {
+        globalCallState.isCalling = false;
+        clearInterval(globalCallState.durationInterval);
+        clearTimeout(globalCallState.ringingTimeout);
+        globalCallState.startTime = null;
+        globalCallState.pendingSignal = null;
+
+        stopRingtones();
+        outgoingCallModal.classList.add('hidden');
+        incomingCallModal.classList.add('hidden');
+        activeCallScreen.classList.add('hidden');
+
+        if (typeof isMinimized !== 'undefined' && isMinimized) {
+            document.getElementById('minimizeBtn').click(); // Reset window size
+        }
+        document.getElementById('callStatusText').classList.replace('bg-green-500/80', 'bg-black/50');
+        document.getElementById('callStatusText').innerText = "Đang kết nối...";
+
+        if (document.pictureInPictureElement) {
+            document.exitPictureInPicture().catch(e => console.log(e));
+        }
+
+        if (globalCallState.peerConnection) {
+            globalCallState.peerConnection.close();
+            globalCallState.peerConnection = null;
+        }
+        if (globalCallState.localStream) {
+            globalCallState.localStream.getTracks().forEach(track => track.stop());
+            globalCallState.localStream = null;
+        }
+        if (globalCallState.remoteStream) {
+            globalCallState.remoteStream.getTracks().forEach(track => track.stop());
+            globalCallState.remoteStream = null;
+        }
+    }
+
+    // Giao diện Khởi tạo Cuộc gọi toàn cục (Gọi ra ngoài)
+    window.startWebRTCCall = async (targetId, targetUsername, targetAvatar, isVideo) => {
+        if (globalCallState.isCalling) return;
+
+        globalCallState.isVideoCall = isVideo;
+        globalCallState.recipientId = targetId;
+
+        const hasMedia = await globalInitMedia(isVideo);
+        if (!hasMedia) return;
+
+        globalCallState.isCalling = true;
+
+        // Show Zalo-style Outgoing Modal
+        document.getElementById('outgoingAvatar').src = targetAvatar && targetAvatar.trim() ? targetAvatar : 'https://via.placeholder.com/150';
+        document.getElementById('outgoingNameDisplay').innerText = targetUsername;
+        document.getElementById('outgoingType').innerText = isVideo ? "video" : "thoại";
+        outgoingCallModal.classList.remove('hidden');
+
+        outgoingRingtone.play().catch(e => console.log(e));
+
+        globalCallState.ringingTimeout = setTimeout(() => {
+            window.globalSocket.emit('end_call', { to: targetId, duration: 0 });
+            closeCall();
+            alert("Không có phản hồi từ người dùng.");
+        }, 60000);
+
+        createGlobalPeerConnection();
+        let offer = await globalCallState.peerConnection.createOffer();
+        await globalCallState.peerConnection.setLocalDescription(offer);
+
+        window.globalSocket.emit('call_user', {
+            user_to_call: targetId,
+            signal_data: offer,
+            is_video: isVideo
+        });
+    };
+
+    function initWebRTCSocketEvents() {
+        window.globalSocket.on('call_made', async (data) => {
+            if (globalCallState.isCalling || !incomingCallModal.classList.contains('hidden')) {
+                window.globalSocket.emit('user_busy', { to: data.from });
+                return;
+            }
+
+            globalCallState.recipientId = data.from;
+            globalCallState.isVideoCall = data.is_video !== undefined ? data.is_video : true;
+            globalCallState.pendingSignal = data.signal;
+
+            document.getElementById('incomingType').innerText = globalCallState.isVideoCall ? "video" : "thoại";
+            document.getElementById('incomingTypeIcon').className = globalCallState.isVideoCall ? "fas fa-video ml-1" : "fas fa-phone-volume ml-1 animate-bounce";
+            document.getElementById('callerNameDisplay').innerText = data.from_name;
+            document.getElementById('voiceCallName').innerText = data.from_name;
+
+            if (globalCallState.isVideoCall) {
+                document.getElementById('acceptVideoBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('acceptVideoBtn').classList.remove('hidden'); // Always show video option
+            }
+
+            if (data.from_avatar) {
+                document.getElementById('incomingAvatar').src = data.from_avatar;
+                document.getElementById('incomingAvatar').classList.remove('hidden');
+                document.getElementById('incomingDefaultAvatar').classList.add('hidden');
+            } else {
+                document.getElementById('incomingAvatar').classList.add('hidden');
+                document.getElementById('incomingDefaultAvatar').classList.remove('hidden');
+            }
+
+            incomingCallModal.classList.remove('hidden');
+            incomingRingtone.play().catch(e => console.log("Blocked Autoplay"));
+
+            if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+                new Notification(`Cuộc gọi ${globalCallState.isVideoCall ? 'video' : 'thoại'} tới`, {
+                    body: `${data.from_name} đang gọi...`
+                });
+            }
+        });
+
+        window.globalSocket.on('answer_made', async (data) => {
+            if (data.to == globalCallState.recipientId && globalCallState.isCalling) {
+                stopRingtones();
+                clearTimeout(globalCallState.ringingTimeout);
+
+                // Trốn Zalo modal, bật Full Screen Video
+                outgoingCallModal.classList.add('hidden');
+                activeCallScreen.classList.remove('hidden');
+
+                document.getElementById('callStatusText').classList.replace('bg-black/50', 'bg-green-500/80');
+                globalCallState.startTime = Date.now();
+                globalCallState.durationInterval = setInterval(() => {
+                    let s = Math.floor((Date.now() - globalCallState.startTime) / 1000);
+                    let m = Math.floor(s / 60).toString().padStart(2, '0');
+                    let ss = (s % 60).toString().padStart(2, '0');
+                    document.getElementById('callStatusText').innerText = `${m}:${ss}`;
+                }, 1000);
+
+                await globalCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
+            }
+        });
+
+        window.globalSocket.on('ice_candidate', (data) => {
+            if (data.from == globalCallState.recipientId && globalCallState.isCalling && globalCallState.peerConnection) {
+                globalCallState.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        });
+
+        window.globalSocket.on('call_rejected', (data) => {
+            if (data.from == globalCallState.recipientId) {
+                alert("Người dùng kia đã từ chối cuộc gọi.");
+                closeCall();
+            }
+        });
+
+        window.globalSocket.on('call_busy', (data) => {
+            if (data.from == globalCallState.recipientId) {
+                alert("Người dùng hiện đang bận.");
+                closeCall();
+            }
+        });
+
+        window.globalSocket.on('call_ended', (data) => {
+            if (data.from == globalCallState.recipientId) {
+                closeCall();
+            }
+        });
+    }
+
+    // ===================================
+    // KẾT NỐI BUTTONS CỦA MODAL CALL
+    // ===================================
+    document.getElementById('cancelCallBtn').addEventListener('click', () => {
+        let duration = 0;
+        window.globalSocket.emit('end_call', { to: globalCallState.recipientId, duration: duration });
+        closeCall();
+    });
+
+    document.getElementById('rejectCallBtn').addEventListener('click', () => {
+        window.globalSocket.emit('reject_call', { to: globalCallState.recipientId });
+        closeCall();
+    });
+
+    async function handleAcceptCall(withVideo) {
+        stopRingtones();
+        incomingCallModal.classList.add('hidden');
+
+        const hasMedia = await globalInitMedia(withVideo);
+        if (!hasMedia) return;
+
+        globalCallState.isCalling = true;
+        activeCallScreen.classList.remove('hidden');
+        document.getElementById('callStatusText').classList.replace('bg-black/50', 'bg-green-500/80');
+
+        createGlobalPeerConnection();
+
+        globalCallState.startTime = Date.now();
+        globalCallState.durationInterval = setInterval(() => {
+            let s = Math.floor((Date.now() - globalCallState.startTime) / 1000);
+            let m = Math.floor(s / 60).toString().padStart(2, '0');
+            let ss = (s % 60).toString().padStart(2, '0');
+            document.getElementById('callStatusText').innerText = `${m}:${ss}`;
+        }, 1000);
+
+        // Map cấu hình của người gọi cho mình
+        if (globalCallState.pendingSignal) {
+            await globalCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(globalCallState.pendingSignal));
+            let answer = await globalCallState.peerConnection.createAnswer();
+            await globalCallState.peerConnection.setLocalDescription(answer);
+
+            window.globalSocket.emit('make_answer', {
+                to: globalCallState.recipientId,
+                signal: answer
+            });
+            globalCallState.pendingSignal = null;
+        }
+    }
+
+    document.getElementById('acceptVoiceBtn').addEventListener('click', () => handleAcceptCall(false));
+    document.getElementById('acceptVideoBtn').addEventListener('click', () => handleAcceptCall(true));
+
+    document.getElementById('hangupBtn').addEventListener('click', () => {
+        let duration = 0;
+        if (globalCallState.startTime) {
+            duration = Math.floor((Date.now() - globalCallState.startTime) / 1000);
+        }
+        window.globalSocket.emit('end_call', { to: globalCallState.recipientId, duration: duration });
+        closeCall();
+    });
+
+    document.getElementById('toggleWebRtcMicBtn').addEventListener('click', () => {
+        if (globalCallState.localStream) {
+            globalCallState.isMicMuted = !globalCallState.isMicMuted;
+            globalCallState.localStream.getAudioTracks()[0].enabled = !globalCallState.isMicMuted;
+            const btn = document.getElementById('toggleWebRtcMicBtn');
+            btn.innerHTML = globalCallState.isMicMuted ? '<i class="fas fa-microphone-slash text-xl text-red-500"></i>' : '<i class="fas fa-microphone text-xl"></i>';
+        }
+    });
+
+    document.getElementById('toggleWebRtcCamBtn').addEventListener('click', () => {
+        if (globalCallState.localStream && globalCallState.localStream.getVideoTracks().length > 0) {
+            globalCallState.isCamOff = !globalCallState.isCamOff;
+            globalCallState.localStream.getVideoTracks()[0].enabled = !globalCallState.isCamOff;
+            const btn = document.getElementById('toggleWebRtcCamBtn');
+            btn.innerHTML = globalCallState.isCamOff ? '<i class="fas fa-video-slash text-xl text-red-500"></i>' : '<i class="fas fa-video text-xl"></i>';
+            
+            if (!globalCallState.isCamOff) {
+                localVideoContainer.classList.remove('hidden');
+                voiceCallBg.classList.add('hidden'); // If we turn on video, we might want to hide our own background view? 
+                // Wait, voiceCallBg is for REMOTE video. 
+            } else {
+                localVideoContainer.classList.add('hidden');
+            }
+        } else {
+            alert("Không tìm thấy camera để bật!");
+        }
+    });
+
+    document.getElementById('toggleSpeakerBtn').addEventListener('click', () => {
+        remoteVideo.muted = !remoteVideo.muted;
+        const btn = document.getElementById('toggleSpeakerBtn');
+        btn.innerHTML = remoteVideo.muted ? '<i class="fas fa-volume-mute text-lg sm:text-xl text-red-500"></i>' : '<i class="fas fa-volume-up text-lg sm:text-xl"></i>';
+    });
+
+    let isMinimized = false;
+    document.getElementById('minimizeBtn').addEventListener('click', () => {
+        isMinimized = !isMinimized;
+        const screen = document.getElementById('activeCallScreen');
+        if (isMinimized) {
+            // Thu nhỏ vào góc dưới phải
+            screen.classList.remove('inset-0');
+            screen.classList.add('top-24', 'right-6', 'w-80', 'h-[30rem]', 'rounded-3xl', 'shadow-2xl', 'overflow-hidden', 'border-2', 'border-orange-500');
+            document.getElementById('minimizeBtn').innerHTML = '<i class="fas fa-expand-alt text-lg sm:text-xl"></i>';
+        } else {
+            // Phóng to trở lại
+            screen.classList.add('inset-0');
+            screen.classList.remove('top-24', 'right-6', 'w-80', 'h-[30rem]', 'rounded-3xl', 'shadow-2xl', 'overflow-hidden', 'border-2', 'border-orange-500');
+            document.getElementById('minimizeBtn').innerHTML = '<i class="fas fa-compress-alt text-lg sm:text-xl"></i>';
+        }
+    });
+</script>
+{% endif %}

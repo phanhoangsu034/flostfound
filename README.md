@@ -116,6 +116,25 @@ Hệ thống dùng Trạng thái tin (Status) để báo cáo tiến độ tìm/
 - **Chưa giải quyết (Open):** Là trạng thái mặc định lúc vừa đăng xong. Tin này sẽ được tự động hiển thị công khai ở Trang chủ và hệ thống tìm kiếm.
 - **Đã giải quyết / Đã hoàn trả (Closed):** Trường hợp đồ thất lạc đã về lại với chủ. Người đăng bài có thể đánh dấu bài viết của họ thành "Đã trả lại/ Đã giải quyết" bằng cách vào **Hồ sơ của tôi -> Tin đã đăng -> Edit**. Khi chuyển sang trạng thái này, bài viết sẽ lập tức ẩn đi khỏi bảng tin Trang chủ để nhường chỗ cho đồ bị mất của người khác đi tìm, nhưng vẫn có thể xem lại nếu dùng bộ lọc tìm kiếm tuỳ chỉnh.
 
+### 4. Hệ thống Gọi điện (Voice/Video Call - WebRTC)
+Dự án nay đã tích hợp công cụ gọi điện trực tiếp không độ trễ theo chuẩn Zalo/Messenger:
+- **Giao diện tiện dụng:** Người dùng có thể nhận cuộc gọi ở định dạng Đổ chuông Toàn cục (Popup rung & Âm thanh) ở bất kỳ trang nào. Có 2 dạng cuộc gọi: Gọi Thoại (Voice) và Gọi Video.
+- **Quyền lựa chọn (Receiver's Choice):** Người nhận cuộc gọi Video có toàn quyền quyết định nhấc máy bằng Camera (Hình ảnh 2 chiều) hay nhấc máy bằng Thoại (Tắt camera bản thân để bảo vệ quyền riêng tư).
+- **Trải nghiệm Đa nhiệm (Chat song song):** Trong lúc đang gọi điện, người dùng có thể click vào nút **"Thu nhỏ (Minimize)"** để đẩy màn hình cuộc gọi xuống góc màn hình ở dạng luồng nổi (In-App PiP). Giúp linh hoạt tìm kiếm đồ đạc và nhắn tin văn bản đồng thời.
+- **Điều khiển trực quan:** Cung cấp Toolbars nâng cao cho phép Tắt Micro cá nhân (Mute), Tắt âm thanh đối phương (Speaker), Bật/Tắt Camera và Nút Cúp Máy. Hiển thị bộ đếm giờ (Timer Counter) tự động chuẩn xác.
+
+**⚙️ Công nghệ sử dụng & Kiến trúc triển khai:**
+- **WebRTC (Web Real-Time Communication):** Công nghệ lõi chịu trách nhiệm truyền tải luồng Video và Audio trực tiếp (Peer-to-Peer) giữa 2 trình duyệt mà không cần thông qua Server, mang lại độ trễ gần như bằng 0.
+- **Flask-SocketIO (Signaling Server):** Đóng vai trò làm "Tổng đài viên". Trước khi WebRTC có thể kết nối P2P, hai trình duyệt cần trao đổi địa chỉ cho nhau (SDP Offers/Answers và ICE Candidates). Giao thức SocketIO được dùng để truyền các tín hiệu bắt tay này với tốc độ mili-giây.
+- **Google STUN Servers (`stun:stun1.l.google.com:19302`):** Máy chủ hỗ trợ vượt rào tường lửa và NAT, giúp trình duyệt tự tìm ra địa chỉ IP Public của chính mình để kết nối với người ở mạng WiFi khác.
+- **HTML5 `navigator.mediaDevices` & TailwindCSS:** Xử lý cấp quyền Mic/Cam từ thiết bị cứng và đảm nhận hệ thống UI Modal linh hoạt, Zalo-style.
+
+**🔄 Luồng hoạt động (The Flow):**
+1. **Khởi tạo:** Người gọi (Caller) ấn click. Trình duyệt truy cập phần cứng Media và tạo ra gói tin `Offer`.
+2. **Signaling:** Gói tin `Offer` được mã hoá và quăng lên máy chủ Flask qua SocketIO để chuyển tiếp đích danh tên người nhận.
+3. **Đổ chuông (Ringing):** Socket.io ở client người nhận (Receiver) bắt được tín hiệu `Offer`. Lập tức kích hoạt nhạc chuông và hiển thị Modal Nhấc máy, *bất chấp họ đang ở trang nào trên hệ thống* (Global Socket).
+4. **Chấp nhận & Trả lời:** Khi Receiver bấm "Nghe", máy nhận khởi tạo Media và tạo gói dữ liệu `Answer` gửi ngược về máy người gọi.
+5. **Streaming (P2P Connectivity):** Hai máy trao đổi các `ICE Candidates` để tìm đường mạng tối ưu nhất. Khi tìm thành công, luồng Video/Audio lập tức kết nối trực tiếp với nhau, hoàn tất đàm thoại.
 
 ## 🆘 Hỗ trợ
 Nếu quá trình cài đặt gặp lỗi xuất hiện trên Terminal báo đỏ (đặc biệt các dạng lỗi `ImportError` ở thư viện scikit-learn, psycopg binary hoặc cài thiếu package eventlet / SocketIO), bạn hãy copy đoạn text log lỗi đó vào box chat team hoặc hỏi ChatBot để được hỗ trợ lệnh pip cài bổ sung ngay kịp thời!

@@ -14,18 +14,38 @@
                 {% if recipient.last_seen and (datetime.utcnow() - recipient.last_seen).total_seconds() < 300 %} <span
                     class="text-green-500 text-xs"><i class="fas fa-circle text-[8px] mr-1"></i> Online</span>
                     {% else %}
-                    <span class="text-gray-400 text-xs"><i class="fas fa-circle text-[8px] mr-1"></i> Offline</span>
-                    {% endif %}
+                    <span class="text-gray-400 text-xs">
+                        <i class="fas fa-circle text-[8px] mr-1"></i>
+                        {% if recipient.last_seen %}
+                        {% set diff = datetime.utcnow() - recipient.last_seen %}
+                        {% set seconds = diff.total_seconds() %}
+                        {% if seconds < 60 %} Vừa mới offline {% elif seconds < 3600 %} Hoạt động {{ (seconds // 60) |
+                            int }} phút trước {% elif seconds < 86400 %} Hoạt động {{ (seconds // 3600) | int }} giờ
+                            trước {% else %} Hoạt động {{ (seconds // 86400) | int }} ngày trước {% endif %} {% else %}
+                            Offline {% endif %} </span>
+                            {% endif %}
             </div>
         </div>
-        <a href="{{ url_for('posts_view.index') }}" class="text-gray-500 hover:text-gray-700"><i
-                class="fas fa-times"></i></a>
+        <div class="flex items-center space-x-4">
+            <!-- Voice Call Button -->
+            <button id="startVoiceCallBtn" class="text-orange-500 hover:text-orange-600 transition" title="Gọi Thoại">
+                <i class="fas fa-phone-alt text-xl"></i>
+            </button>
+            <!-- Video Call Button -->
+            <button id="startVideoCallBtn" class="text-orange-500 hover:text-orange-600 transition" title="Gọi Video">
+                <i class="fas fa-video text-xl"></i>
+            </button>
+            <a href="{{ url_for('posts_view.index') }}" class="text-gray-500 hover:text-gray-700 transition">
+                <i class="fas fa-times text-xl"></i>
+            </a>
+        </div>
     </div>
 
     <!-- Messages Area -->
     <div id="messages" class="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50">
         <!-- Audio for notification -->
-        <audio id="notifSound" src="https://www.myinstants.com/media/sounds/discord-notification.mp3" preload="auto"></audio>
+        <audio id="notifSound" src="https://www.myinstants.com/media/sounds/discord-notification.mp3"
+            preload="auto"></audio>
 
         {% for msg in messages %}
         <div class="flex {% if msg.sender_id == current_user.id %} justify-end {% else %} justify-start {% endif %}">
@@ -127,6 +147,28 @@
         messagesDiv.appendChild(div);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
+
+    // ==========================================
+    // KHỞI TẠO CUỘC GỌI TOÀN CỤC CHẠY BÊN BASE.HTML
+    // ==========================================
+    const startVideoCallBtn = document.getElementById('startVideoCallBtn');
+    const startVoiceCallBtn = document.getElementById('startVoiceCallBtn');
+
+    if (startVideoCallBtn) {
+        startVideoCallBtn.addEventListener('click', () => {
+            if (window.startWebRTCCall) {
+                window.startWebRTCCall(recipientId, '{{ recipient.username }}', '{{ recipient.avatar }}', true);
+            }
+        });
+    }
+
+    if (startVoiceCallBtn) {
+        startVoiceCallBtn.addEventListener('click', () => {
+            if (window.startWebRTCCall) {
+                window.startWebRTCCall(recipientId, '{{ recipient.username }}', '{{ recipient.avatar }}', false);
+            }
+        });
+    }
 
 </script>
 {% endblock %}

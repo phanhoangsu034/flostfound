@@ -219,6 +219,7 @@
     </footer>
 
     {% include 'posts/create_modal.html' %}
+    {% include 'messages/webrtc_modals.html' %}
 
     <script>
         function toggleMobileMenu() {
@@ -248,9 +249,9 @@
             });
 
             {% if current_user.is_authenticated %}
-            const socket = io();
-            socket.on('connect', () => socket.emit('join_notifications'));
-            socket.on('notification', (data) => {
+            window.globalSocket = io();
+            window.globalSocket.on('connect', () => window.globalSocket.emit('join_notifications'));
+            window.globalSocket.on('notification', (data) => {
                 // Play notification sound
                 const globalSound = document.getElementById('globalNotifSound');
                 if (globalSound) {

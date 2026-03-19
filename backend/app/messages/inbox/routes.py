@@ -3,6 +3,7 @@ Inbox routes
 """
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
+from datetime import datetime
 from app.models.user import User
 from app.models.message import Message
 
@@ -30,4 +31,4 @@ def messages_inbox():
     
     # Convert to list
     inbox_items = list(conversations.values())
-    return render_template('messages/inbox.html', conversations=inbox_items)
+    return render_template('messages/inbox.html', conversations=inbox_items, datetime=datetime)
