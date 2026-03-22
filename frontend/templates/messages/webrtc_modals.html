@@ -96,7 +96,10 @@
                 class="fas fa-video text-lg sm:text-xl"></i></button>
         <button id="mirrorCamBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"
-            title="Đảo chiều Video (Mirror)"><i class="fas fa-exchange-alt text-lg sm:text-xl"></i></button>
+            title="Đảo gương (Soi gương/Thật)"><i class="fas fa-user-circle text-lg sm:text-xl"></i></button>
+        <button id="switchCamBtn"
+            class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"
+            title="Đổi Camera (Trước/Sau)"><i class="fas fa-sync-alt text-lg sm:text-xl"></i></button>
         <button id="minimizeBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-white transition"
             title="Chat Song Song (Thu nhỏ)"><i class="fas fa-compress-alt text-lg sm:text-xl"></i></button>
@@ -117,6 +120,7 @@
         peerConnection: null,
         isMicMuted: false,
         isCamOff: false,
+        isFacingModeUser: true, // true: Front, false: Back
         pendingSignal: null,
         iceCandidateQueue: []
     };
@@ -172,15 +176,48 @@
         outgoingRingtone.pause(); outgoingRingtone.currentTime = 0;
     }
 
+    async function checkCameraDevices() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            const switchBtn = document.getElementById('switchCamBtn');
+            if (videoDevices.length <= 1) {
+                switchBtn.classList.add('hidden');
+                console.log("Thiết bị chỉ có 1 camera, ẩn nút chuyển đổi.");
+            } else {
+                switchBtn.classList.remove('hidden');
+                console.log(`Tìm thấy ${videoDevices.length} camera, hiện nút chuyển đổi.`);
+            }
+        } catch (err) {
+            console.error("Lỗi quét thiết bị camera:", err);
+            document.getElementById('switchCamBtn').classList.add('hidden');
+        }
+    }
+
+    // Lắng nghe nếu người dùng cắm thêm WebCam rời
+    navigator.mediaDevices.ondevicechange = checkCameraDevices;
+
     async function globalInitMedia(video = true) {
         try {
             // Always try to get both so it's possible to toggle later, but handle lack of camera
-            let constraints = { audio: true, video: true };
-            try {
-                globalCallState.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (vErr) {
-                console.log("No camera found or denied, falling back to audio only", vErr);
-                globalCallState.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            let constraints = { 
+                audio: true, 
+                video: video ? { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" } : false 
+            };
+            
+            // Nếu đã có stream cũ thì stop các track video trước khi xin quyền mới (để switch cam)
+            if (globalCallState.localStream && video) {
+                globalCallState.localStream.getVideoTracks().forEach(track => track.stop());
+            }
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            if (globalCallState.localStream) {
+                // Giữ lại audio track cũ nếu chỉ muốn đổi video (tránh giật tiếng)
+                // Tuy nhiên dùng cách đơn giản là thay toàn bộ stream cho ổn định
+                globalCallState.localStream = stream;
+            } else {
+                globalCallState.localStream = stream;
             }
 
             const hasVideoTrack = globalCallState.localStream.getVideoTracks().length > 0;
@@ -206,10 +243,22 @@
                 voiceCallBg.classList.remove('hidden');
                 document.getElementById('toggleWebRtcCamBtn').classList.add('hidden');
             }
+
+            // Nếu đang trong cuộc gọi thì thay thế track cho PeerConnection
+            if (globalCallState.peerConnection && hasVideoTrack) {
+                const videoTrack = globalCallState.localStream.getVideoTracks()[0];
+                const sender = globalCallState.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
+                if (sender) {
+                    sender.replaceTrack(videoTrack);
+                }
+            }
+
             return true;
         } catch (error) {
-            alert("Không thể truy cập Microphone! Vui lòng cho phép quyền trên trình duyệt.");
-            console.error(error);
+            console.error("Media Error:", error);
+            if (!video) {
+                alert("Không thể truy cập Microphone!");
+            }
             return false;
         }
     }
@@ -347,6 +396,9 @@
         outgoingCallModal.classList.remove('hidden');
 
         outgoingRingtone.play().catch(e => console.log(e));
+        
+        // Quét xem máy có mấy Cam để hiện/ẩn nút Switch
+        checkCameraDevices();
 
         globalCallState.ringingTimeout = setTimeout(() => {
             window.globalSocket.emit('end_call', { to: targetId, duration: 0 });
@@ -509,6 +561,9 @@
 
         stopRingtones();
         incomingCallModal.classList.add('hidden');
+        
+        // Quét xem máy có mấy Cam để hiện/ẩn nút Switch
+        checkCameraDevices();
 
         const hasMedia = await globalInitMedia(withVideo);
         if (!hasMedia) return;
@@ -615,11 +670,38 @@
         if (localVideo.classList.contains('scale-x-[-1]')) {
             localVideo.classList.remove('scale-x-[-1]');
             // Chế độ thật (cho người khác đọc được chữ)
-            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-exchange-alt text-lg sm:text-xl text-green-400"></i>';
+            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl text-green-400"></i>';
         } else {
             localVideo.classList.add('scale-x-[-1]');
             // Chế độ soi gương (mặc định)
-            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-exchange-alt text-lg sm:text-xl"></i>';
+            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl"></i>';
+        }
+    });
+
+    document.getElementById('switchCamBtn').addEventListener('click', async () => {
+        if (globalCallState.isCamOff) {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Vui lòng bật camera trước khi đổi', showConfirmButton: false, timer: 3000 });
+            return;
+        }
+        
+        globalCallState.isFacingModeUser = !globalCallState.isFacingModeUser;
+        const btn = document.getElementById('switchCamBtn');
+        btn.classList.add('animate-spin');
+        
+        const success = await globalInitMedia(true);
+        
+        btn.classList.remove('animate-spin');
+        if (success) {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Đang dùng Camera ${globalCallState.isFacingModeUser ? 'Trước' : 'Sau'}`, showConfirmButton: false, timer: 2000 });
+            
+            // Tự động tắt mirror nếu là camera sau (thường camera sau ko cần soi gương)
+            if (!globalCallState.isFacingModeUser) {
+                localVideo.classList.remove('scale-x-[-1]');
+                document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl text-green-400"></i>';
+            } else {
+                localVideo.classList.add('scale-x-[-1]');
+                document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl"></i>';
+            }
         }
     });
 </script>
