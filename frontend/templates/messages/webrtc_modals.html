@@ -55,15 +55,19 @@
 
 <!-- Active Call Screen -->
 <div id="activeCallScreen" class="hidden fixed inset-0 bg-gray-950 z-[60] flex flex-col items-center justify-center">
-    <!-- Nền thoại thay thế Camera -->
+    <!-- Nền thoại thay thế Camera (Remote) -->
     <div id="voiceCallBg"
-        class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-0 bg-cover bg-center"
-        style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/team_photo.png');">
-        <div class="w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center mb-6 shadow-lg">
-            <i class="fas fa-user text-6xl text-gray-500"></i>
+        class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-0 bg-cover bg-center overflow-hidden"
+        style="background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('/static/team_photo.png');">
+        <div class="absolute inset-0 backdrop-blur-md"></div>
+        <div class="relative z-10 flex flex-col items-center justify-center">
+            <div
+                class="w-32 h-32 rounded-full bg-gray-700/50 flex items-center justify-center mb-6 shadow-2xl border-4 border-white/20">
+                <i class="fas fa-user text-6xl text-gray-400"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2" id="voiceCallName">Người dùng</h2>
+            <p class="text-orange-400 animate-pulse text-sm font-medium tracking-widest">CUỘC GỌI AN TOÀN</p>
         </div>
-        <h2 class="text-2xl font-bold text-white mb-2" id="voiceCallName">Người dùng</h2>
-        <p class="text-orange-400 animate-pulse text-sm">Cuộc gọi thoại bảo mật cấp cao</p>
     </div>
 
     <!-- Remote Video -->
@@ -71,8 +75,14 @@
 
     <!-- Local Video -->
     <div id="localVideoContainer"
-        class="absolute top-4 right-4 w-32 h-44 bg-gray-800 rounded-xl overflow-hidden border-2 border-orange-500 shadow-2xl z-10 transition-transform">
+        class="absolute top-4 right-4 w-32 h-44 bg-gray-800 rounded-xl overflow-hidden border-2 border-orange-500 shadow-2xl z-10 transition-transform bg-cover bg-center"
+        style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/static/team_photo.png');">
+        <div class="local-blur absolute inset-0 backdrop-blur-sm hidden"></div>
         <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
+        <!-- Overlay khi tắt cam mình -->
+        <div id="localCamOffOverlay" class="absolute inset-0 flex items-center justify-center bg-black/40 hidden">
+            <i class="fas fa-user text-3xl text-gray-400"></i>
+        </div>
     </div>
 
     <div id="callStatusText"
@@ -94,9 +104,6 @@
         <button id="toggleWebRtcCamBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"><i
                 class="fas fa-video text-lg sm:text-xl"></i></button>
-        <button id="mirrorCamBtn"
-            class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"
-            title="Đảo gương (Soi gương/Thật)"><i class="fas fa-user-circle text-lg sm:text-xl"></i></button>
         <button id="switchCamBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"
             title="Đổi Camera (Trước/Sau)"><i class="fas fa-sync-alt text-lg sm:text-xl"></i></button>
@@ -200,18 +207,18 @@
     async function globalInitMedia(video = true) {
         try {
             // Always try to get both so it's possible to toggle later, but handle lack of camera
-            let constraints = { 
-                audio: true, 
-                video: video ? { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" } : false 
+            let constraints = {
+                audio: true,
+                video: video ? { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" } : false
             };
-            
+
             // Nếu đã có stream cũ thì stop các track video trước khi xin quyền mới (để switch cam)
             if (globalCallState.localStream && video) {
                 globalCallState.localStream.getVideoTracks().forEach(track => track.stop());
             }
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
-            
+
             if (globalCallState.localStream) {
                 // Giữ lại audio track cũ nếu chỉ muốn đổi video (tránh giật tiếng)
                 // Tuy nhiên dùng cách đơn giản là thay toàn bộ stream cho ổn định
@@ -227,20 +234,23 @@
                 if (video) {
                     globalCallState.isCamOff = false;
                     globalCallState.localStream.getVideoTracks()[0].enabled = true;
-                    localVideoContainer.classList.remove('hidden');
-                    voiceCallBg.classList.add('hidden');
+                    // localVideoContainer.classList.remove('hidden'); // Never hide container, just show overlay
+                    localVideo.classList.remove('hidden');
+                    document.getElementById('localCamOffOverlay').classList.add('hidden');
+                    // voiceCallBg.classList.add('hidden'); // Only hide remote bg when remote video is active
                     document.getElementById('toggleWebRtcCamBtn').innerHTML = '<i class="fas fa-video text-xl"></i>';
                 } else {
                     globalCallState.isCamOff = true;
                     globalCallState.localStream.getVideoTracks()[0].enabled = false;
-                    localVideoContainer.classList.add('hidden');
-                    voiceCallBg.classList.remove('hidden');
+                    localVideo.classList.add('hidden');
+                    document.getElementById('localCamOffOverlay').classList.remove('hidden');
                     document.getElementById('toggleWebRtcCamBtn').innerHTML = '<i class="fas fa-video-slash text-xl text-red-500"></i>';
                 }
                 document.getElementById('toggleWebRtcCamBtn').classList.remove('hidden');
             } else {
-                localVideoContainer.classList.add('hidden');
-                voiceCallBg.classList.remove('hidden');
+                // No video hardware at all
+                localVideo.classList.add('hidden');
+                document.getElementById('localCamOffOverlay').classList.remove('hidden');
                 document.getElementById('toggleWebRtcCamBtn').classList.add('hidden');
             }
 
@@ -293,22 +303,38 @@
             // Dành cho Mobile/Safari: Ép bật media ngay khi track đã vô
             remoteVideo.play().catch(e => console.log("Auto-play error", e));
 
-            // Monitor track states to auto-hide/show background
-            const checkVideoVisibility = () => {
-                const hasActiveVideo = stream.getVideoTracks().some(t => t.enabled && !t.muted);
+            // Monitor track states to auto-hide/show background based on REMOTE video
+            const checkRemoteVideoVisibility = () => {
+                const hasActiveVideo = stream.getVideoTracks().some(t => t.enabled && !t.muted && t.readyState === 'live');
                 if (hasActiveVideo) {
                     voiceCallBg.classList.add('hidden');
+                    remoteVideo.classList.remove('hidden');
+                    console.log("Đối phương đã BẬT Camera");
                 } else {
                     voiceCallBg.classList.remove('hidden');
+                    remoteVideo.classList.add('hidden');
+                    console.log("Đối phương đã TẮT Camera");
                 }
             };
 
-            checkVideoVisibility();
+            // initial check
+            checkRemoteVideoVisibility();
+
+            // Listen for remote track changes (Mute/Unmute/Ended)
             stream.getVideoTracks().forEach(track => {
-                track.onunmute = checkVideoVisibility;
-                track.onmute = checkVideoVisibility;
-                track.onended = checkVideoVisibility;
+                track.onunmute = checkRemoteVideoVisibility;
+                track.onmute = checkRemoteVideoVisibility;
+                track.onended = checkRemoteVideoVisibility;
             });
+
+            // Cài đặt thêm khoảng kiểm tra định kỳ vì đôi khi event unmute trên mobile ko nhạy
+            const monitorInt = setInterval(() => {
+                if (!globalCallState.isCalling) {
+                    clearInterval(monitorInt);
+                    return;
+                }
+                checkRemoteVideoVisibility();
+            }, 3000);
         };
 
         globalCallState.peerConnection.onicecandidate = (event) => {
@@ -396,7 +422,7 @@
         outgoingCallModal.classList.remove('hidden');
 
         outgoingRingtone.play().catch(e => console.log(e));
-        
+
         // Quét xem máy có mấy Cam để hiện/ẩn nút Switch
         checkCameraDevices();
 
@@ -561,7 +587,7 @@
 
         stopRingtones();
         incomingCallModal.classList.add('hidden');
-        
+
         // Quét xem máy có mấy Cam để hiện/ẩn nút Switch
         checkCameraDevices();
 
@@ -632,11 +658,11 @@
             btn.innerHTML = globalCallState.isCamOff ? '<i class="fas fa-video-slash text-xl text-red-500"></i>' : '<i class="fas fa-video text-xl"></i>';
 
             if (!globalCallState.isCamOff) {
-                localVideoContainer.classList.remove('hidden');
-                voiceCallBg.classList.add('hidden'); // If we turn on video, we might want to hide our own background view? 
-                // Wait, voiceCallBg is for REMOTE video. 
+                localVideo.classList.remove('hidden');
+                document.getElementById('localCamOffOverlay').classList.add('hidden');
             } else {
-                localVideoContainer.classList.add('hidden');
+                localVideo.classList.add('hidden');
+                document.getElementById('localCamOffOverlay').classList.remove('hidden');
             }
         } else {
             Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Không tìm thấy camera để bật', showConfirmButton: false, timer: 3000 });
@@ -666,42 +692,21 @@
         }
     });
 
-    document.getElementById('mirrorCamBtn').addEventListener('click', () => {
-        if (localVideo.classList.contains('scale-x-[-1]')) {
-            localVideo.classList.remove('scale-x-[-1]');
-            // Chế độ thật (cho người khác đọc được chữ)
-            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl text-green-400"></i>';
-        } else {
-            localVideo.classList.add('scale-x-[-1]');
-            // Chế độ soi gương (mặc định)
-            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl"></i>';
-        }
-    });
-
     document.getElementById('switchCamBtn').addEventListener('click', async () => {
         if (globalCallState.isCamOff) {
             Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Vui lòng bật camera trước khi đổi', showConfirmButton: false, timer: 3000 });
             return;
         }
-        
+
         globalCallState.isFacingModeUser = !globalCallState.isFacingModeUser;
         const btn = document.getElementById('switchCamBtn');
         btn.classList.add('animate-spin');
-        
+
         const success = await globalInitMedia(true);
-        
+
         btn.classList.remove('animate-spin');
         if (success) {
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Đang dùng Camera ${globalCallState.isFacingModeUser ? 'Trước' : 'Sau'}`, showConfirmButton: false, timer: 2000 });
-            
-            // Tự động tắt mirror nếu là camera sau (thường camera sau ko cần soi gương)
-            if (!globalCallState.isFacingModeUser) {
-                localVideo.classList.remove('scale-x-[-1]');
-                document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl text-green-400"></i>';
-            } else {
-                localVideo.classList.add('scale-x-[-1]');
-                document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-user-circle text-lg sm:text-xl"></i>';
-            }
         }
     });
 </script>
