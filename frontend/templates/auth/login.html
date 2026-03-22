@@ -62,7 +62,7 @@
 <script type="module">
     // Import Firebase components
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, FacebookAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     // Configuration provided by User
     const firebaseConfig = {
@@ -83,39 +83,54 @@
     const googleProvider = new GoogleAuthProvider();
     const facebookProvider = new FacebookAuthProvider();
 
-    // Nút Google Click
-    document.getElementById('btn-google').addEventListener('click', async () => {
-        try {
-            const result = await signInWithPopup(auth, googleProvider);
+    // Phát hiện Mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // Xử lý kết quả Redirect (dành cho mobile sau khi redirect về)
+    getRedirectResult(auth).then((result) => {
+        if (result && result.user) {
             const user = result.user;
-            // Send to Data Backend
-            sendToBackend(user.email, user.displayName, user.photoURL, 'Google');
+            const provider = user.providerData[0]?.providerId?.includes('google') ? 'Google' : 'Facebook';
+            sendToBackend(user.email, user.displayName, user.photoURL, provider);
+        }
+    }).catch((error) => {
+        if (error.code && error.code !== 'auth/popup-closed-by-user') {
+            console.error("Redirect error:", error);
+        }
+    });
+
+    // Hàm đăng nhập thông minh: Popup trên Desktop, Redirect trên Mobile
+    async function socialLogin(provider, providerName) {
+        try {
+            if (isMobile) {
+                // Mobile: dùng Redirect (không bị chặn popup)
+                await signInWithRedirect(auth, provider);
+            } else {
+                // Desktop: dùng Popup (UX tốt hơn)
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                sendToBackend(user.email, user.displayName, user.photoURL, providerName);
+            }
         } catch (error) {
-            console.error("Lỗi đăng nhập Google:", error);
+            console.error("Lỗi đăng nhập " + providerName + ":", error);
             if (error.code !== 'auth/popup-closed-by-user') {
-                alert("Lỗi đăng nhập Google: " + error.message);
+                alert("Lỗi đăng nhập " + providerName + ": " + (error.customData?.email ? 'Trùng Email với nền tảng khác' : error.message));
             }
         }
+    }
+
+    // Nút Google Click
+    document.getElementById('btn-google').addEventListener('click', () => {
+        socialLogin(googleProvider, 'Google');
     });
 
     // Nút Facebook Click
-    document.getElementById('btn-facebook').addEventListener('click', async () => {
-        try {
-            const result = await signInWithPopup(auth, facebookProvider);
-            const user = result.user;
-            // Send to Data Backend
-            sendToBackend(user.email, user.displayName, user.photoURL, 'Facebook');
-        } catch (error) {
-            console.error("Lỗi đăng nhập Facebook:", error);
-            if (error.code !== 'auth/popup-closed-by-user') {
-                alert("Lỗi đăng nhập Facebook: " + (error.customData?.email ? 'Trùng Email với nền tảng khác' : error.message));
-            }
-        }
+    document.getElementById('btn-facebook').addEventListener('click', () => {
+        socialLogin(facebookProvider, 'Facebook');
     });
 
-    // Hàm vận chuyển dữ liệu bắn JSON lên API Backend của mình tạo
+    // Hàm vận chuyển dữ liệu bắn JSON lên API Backend
     async function sendToBackend(email, name, avatar, provider) {
-        // Yêu cầu bắt buộc phải có Email từ Provider (Google luôn có, Facebook thì tùy quyền riêng tư profile user)
         if (!email) {
             alert("Rất tiếc! Tài khoản " + provider + " của bạn không công khai địa chỉ Email nên hệ thống không thể khởi tạo dữ liệu. Vui lòng thử dùng Google!");
             return;
@@ -129,7 +144,6 @@
         const data = await res.json();
 
         if (data.success) {
-            // Thành công tạo session hoặc login session cũ -> Chuyển thẳng tới Trang chủ
             window.location.href = data.redirect;
         } else {
             alert('Hệ thống từ chối: ' + data.message);
