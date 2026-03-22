@@ -1,11 +1,24 @@
 """
 Registration routes
 """
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app.extensions import db
 from app.models.user import User
 
 bp = Blueprint('auth_register', __name__)
+
+@bp.route('/api/check_register', methods=['POST'])
+def check_register():
+    data = request.get_json()
+    username = data.get('username')
+    email = data.get('email')
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({'success': False, 'message': 'Tên đăng nhập đã tồn tại.'})
+    if User.query.filter_by(email=email).first():
+        return jsonify({'success': False, 'message': 'Email này đã được sử dụng.'})
+        
+    return jsonify({'success': True})
 
 @bp.route('/register', methods=['GET', 'POST'])
 def register():

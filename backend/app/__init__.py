@@ -53,6 +53,7 @@ def register_blueprints(app):
     from app.auth.login.routes import bp as auth_login_bp
     from app.auth.register.routes import bp as auth_register_bp
     from app.auth.logout.routes import bp as auth_logout_bp
+    from app.auth.password_reset.routes import bp as auth_password_reset_bp
     
     # Posts blueprints
     from app.posts.view.routes import bp as posts_view_bp
@@ -79,6 +80,7 @@ def register_blueprints(app):
     app.register_blueprint(auth_login_bp)
     app.register_blueprint(auth_register_bp)
     app.register_blueprint(auth_logout_bp)
+    app.register_blueprint(auth_password_reset_bp)
     app.register_blueprint(posts_view_bp)
     app.register_blueprint(posts_create_bp)
     app.register_blueprint(posts_delete_bp)

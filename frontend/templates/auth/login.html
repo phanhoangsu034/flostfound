@@ -10,7 +10,12 @@
                 class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
         </div>
         <div class="mb-6">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Mật khẩu</label>
+            <div class="flex justify-between items-center mb-2">
+                <label class="block text-gray-700 text-sm font-bold">Mật khẩu</label>
+                <a href="{{ url_for('auth_password_reset.forgot_password') }}"
+                    class="text-sm text-orange-600 hover:text-orange-800 hover:underline"><i
+                        class="fas fa-lock text-xs mr-1"></i> Quên mật khẩu?</a>
+            </div>
             <input type="password" name="password" required
                 class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
         </div>
@@ -18,10 +23,117 @@
             class="w-full bg-orange-600 text-white font-bold py-2 px-4 rounded-md hover:bg-orange-700 transition duration-300">
             Đăng Nhập
         </button>
+
+        <!-- Social Login Section -->
+        <div class="mt-6">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white text-gray-500 font-medium">Hoặc đăng nhập nhanh bằng</span>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-2 gap-3">
+                <button type="button" id="btn-google"
+                    class="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:shadow transition duration-300">
+                    <img class="h-5 w-5 mr-2" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
+                    Google
+                </button>
+                <button type="button" id="btn-facebook"
+                    class="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:shadow transition duration-300">
+                    <img class="h-5 w-5 mr-2"
+                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png"
+                        alt="Facebook">
+                    Facebook
+                </button>
+            </div>
+        </div>
     </form>
-    <p class="mt-4 text-center text-sm text-gray-600">
+
+    <p class="mt-6 text-center text-sm text-gray-600">
         Chưa có tài khoản? <a href="{{ url_for('auth_register.register') }}"
-            class="text-orange-600 hover:underline">Đăng ký ngay</a>
+            class="text-orange-600 font-bold hover:underline">Đăng ký thủ công ngay</a>
     </p>
 </div>
+
+<!-- Firebase Modular JS SDK -->
+<script type="module">
+    // Import Firebase components
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // Configuration provided by User
+    const firebaseConfig = {
+        apiKey: "AIzaSyA0PnP_E-40gzTZI1-oTLOyCWDqgQeJWZw",
+        authDomain: "flostfound-1xbet.firebaseapp.com",
+        projectId: "flostfound-1xbet",
+        storageBucket: "flostfound-1xbet.firebasestorage.app",
+        messagingSenderId: "638666338037",
+        appId: "1:638666338037:web:e5f7773531ac4967885fbc",
+        measurementId: "G-MLG7ZXCXQ3"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Setup Providers
+    const googleProvider = new GoogleAuthProvider();
+    const facebookProvider = new FacebookAuthProvider();
+
+    // Nút Google Click
+    document.getElementById('btn-google').addEventListener('click', async () => {
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const user = result.user;
+            // Send to Data Backend
+            sendToBackend(user.email, user.displayName, user.photoURL, 'Google');
+        } catch (error) {
+            console.error("Lỗi đăng nhập Google:", error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                alert("Lỗi đăng nhập Google: " + error.message);
+            }
+        }
+    });
+
+    // Nút Facebook Click
+    document.getElementById('btn-facebook').addEventListener('click', async () => {
+        try {
+            const result = await signInWithPopup(auth, facebookProvider);
+            const user = result.user;
+            // Send to Data Backend
+            sendToBackend(user.email, user.displayName, user.photoURL, 'Facebook');
+        } catch (error) {
+            console.error("Lỗi đăng nhập Facebook:", error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                alert("Lỗi đăng nhập Facebook: " + (error.customData?.email ? 'Trùng Email với nền tảng khác' : error.message));
+            }
+        }
+    });
+
+    // Hàm vận chuyển dữ liệu bắn JSON lên API Backend của mình tạo
+    async function sendToBackend(email, name, avatar, provider) {
+        // Yêu cầu bắt buộc phải có Email từ Provider (Google luôn có, Facebook thì tùy quyền riêng tư profile user)
+        if (!email) {
+            alert("Rất tiếc! Tài khoản " + provider + " của bạn không công khai địa chỉ Email nên hệ thống không thể khởi tạo dữ liệu. Vui lòng thử dùng Google!");
+            return;
+        }
+
+        const res = await fetch("{{ url_for('auth_login.social_login') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, name, avatar, provider })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Thành công tạo session hoặc login session cũ -> Chuyển thẳng tới Trang chủ
+            window.location.href = data.redirect;
+        } else {
+            alert('Hệ thống từ chối: ' + data.message);
+        }
+    }
+</script>
 {% endblock %}

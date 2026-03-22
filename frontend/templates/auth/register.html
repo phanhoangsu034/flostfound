@@ -1,32 +1,208 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- SDK EmailJS -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
 <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg mt-10">
-    <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Đăng Ký Tài Khoản</h2>
-    <form method="POST" action="{{ url_for('auth_register.register') }}">
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Tên đăng nhập</label>
-            <input type="text" name="username" required
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+    <h2 class="text-2xl font-bold text-center mb-6 text-gray-800" id="form-title">Đăng Ký Tài Khoản</h2>
+
+    <!-- Hiển thị Flash Message Back-end nếu có -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div
+        class="mb-4 p-3 rounded text-sm text-center font-medium 
+                    {% if category == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div id="dynamic-error" class="hidden mb-4 p-3 rounded text-sm text-center font-medium bg-red-100 text-red-700">
+    </div>
+
+    <!-- BƯỚC 1: NHẬP THÔNG TIN (Hiển thị mặc định) -->
+    <div id="step-1-form">
+        <!-- Form thực thụ (Sẽ chỉ bị trigger Submit bằng Code JS sau khi đã qua bước OTP) -->
+        <form method="POST" action="{{ url_for('auth_register.register') }}" id="real-register-form">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Tên đăng nhập</label>
+                <input type="text" name="username" id="username" required
+                    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                <input type="email" name="email" id="email" required
+                    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Mật khẩu</label>
+                <input type="password" name="password" id="password" required minlength="6"
+                    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+            </div>
+            <button type="button" id="btn-send-otp"
+                class="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-md hover:bg-gray-900 transition duration-300 flex justify-center items-center">
+                <span>Gửi Mã Xác Nhận Đăng Ký</span>
+                <i class="fas fa-spinner fa-spin hidden ml-2" id="spinner-send"></i>
+            </button>
+        </form>
+        <p class="mt-4 text-center text-sm text-gray-600">
+            Đã có tài khoản? <a href="{{ url_for('auth_login.login') }}"
+                class="text-orange-600 font-bold hover:underline">Đăng nhập</a>
+        </p>
+    </div>
+
+    <!-- BƯỚC 2: NHẬP OTP XÁC THỰC (Bị ẩn lúc ban đầu) -->
+    <div id="step-2-otp" class="hidden">
+        <div class="text-center mb-4">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-2">
+                <i class="fas fa-envelope-open-text text-2xl"></i>
+            </div>
+            <p class="text-gray-600 text-sm">Mã OTP 6 số đã được gửi đến email:</p>
+            <p class="font-bold text-gray-800" id="show-email"></p>
         </div>
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
-            <input type="email" name="email" required
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
-        </div>
+
         <div class="mb-6">
-            <label class="block text-gray-700 text-sm font-bold mb-2">Mật khẩu</label>
-            <input type="password" name="password" required
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <label class="block text-gray-700 text-sm font-bold mb-2 text-center">Nhập mã OTP</label>
+            <input type="text" id="otp-input" maxlength="6" placeholder="OTP"
+                class="w-full px-3 py-3 font-mono text-2xl text-center tracking-widest border-2 border-gray-300 rounded-md focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 transition-colors">
+            <p id="otp-error" class="hidden mt-2 text-sm text-center text-red-500 font-semibold"><i
+                    class="fas fa-times-circle"></i> Mã OTP không chính xác!</p>
         </div>
-        <button type="submit"
-            class="w-full bg-gray-800 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-900 transition duration-300">
-            Đăng Ký
+
+        <button type="button" id="btn-verify-otp"
+            class="w-full bg-orange-600 text-white font-bold py-3 px-4 rounded-md hover:bg-orange-700 transition duration-300">
+            Xác Nhận & Khởi Tạo Tài Khoản
         </button>
-    </form>
-    <p class="mt-4 text-center text-sm text-gray-600">
-        Đã có tài khoản? <a href="{{ url_for('auth_login.login') }}" class="text-orange-600 hover:underline">Đăng
-            nhập</a>
-    </p>
+        <button type="button" id="btn-back"
+            class="w-full mt-3 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-200 transition duration-300 text-sm">
+            Quay lại sửa thông tin
+        </button>
+    </div>
 </div>
+
+<script>
+    // 1. Khởi tạo EmailJS
+    emailjs.init("FiWoCZgxcRcbBod10");
+
+    let systemGeneratedOTP = "";
+
+    const btnSendOtp = document.getElementById('btn-send-otp');
+    const spinnerSend = document.getElementById('spinner-send');
+    const dynError = document.getElementById('dynamic-error');
+    const step1Form = document.getElementById('step-1-form');
+    const step2Otp = document.getElementById('step-2-otp');
+    const formTitle = document.getElementById('form-title');
+    const realForm = document.getElementById('real-register-form');
+
+    // Nút xác nhận
+    const btnVerifyOtp = document.getElementById('btn-verify-otp');
+    const otpInput = document.getElementById('otp-input');
+    const otpError = document.getElementById('otp-error');
+    const btnBack = document.getElementById('btn-back');
+
+    btnSendOtp.addEventListener('click', async () => {
+        // Validation HTML cơ bản
+        if (!realForm.checkValidity()) {
+            realForm.reportValidity();
+            return;
+        }
+
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+
+        // Loading State
+        btnSendOtp.disabled = true;
+        btnSendOtp.classList.add('opacity-70', 'cursor-not-allowed');
+        spinnerSend.classList.remove('hidden');
+        dynError.classList.add('hidden');
+
+        try {
+            // 2. Gọi Backend API check trùng lặp (không tạo User vội)
+            const checkRes = await fetch("{{ url_for('auth_register.check_register') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, email })
+            });
+            const data = await checkRes.json();
+
+            if (!data.success) {
+                // Email hoặc Tên đăng nhập bị trùng
+                dynError.textContent = data.message;
+                dynError.classList.remove('hidden');
+            } else {
+                // 3. Nếu Hợp lệ -> Random mã OTP 6 số bằng JS (100000 - 999999)
+                systemGeneratedOTP = Math.floor(100000 + Math.random() * 900000).toString();
+
+                console.log("OTP đã sinh ra là: " + systemGeneratedOTP); // Log để Sinh Viên test dể
+
+                // 4. Bắn Email qua EmailJS
+                // YÊU CẦU: TẠO 1 TEMPLATE MỚI TRÊN EMAILJS DÀNH CHO OTP
+                // Biến gửi lên Template: {{to_name}}, {{to_email}}, và {{otp}}
+                const templateParams = {
+                    to_email: email,
+                    to_name: username,
+                    otp: systemGeneratedOTP
+                };
+
+                // Thay mã Template ID do người dùng vừa cung cấp chuẩn
+                await emailjs.send('service_rl3gilo', 'template_7tn437i', templateParams);
+
+                // 5. Chuyển Form Màn Hình Cảnh 2
+                document.getElementById('show-email').textContent = email;
+                step1Form.classList.add('hidden');
+                step2Otp.classList.remove('hidden');
+                formTitle.textContent = "Nhập Mã Xác Nhận";
+                otpInput.focus();
+            }
+        } catch (error) {
+            console.error("Lỗi gửi Email:", error);
+            dynError.textContent = "Không thể gửi OTP tới Hộp thư này! Vui lòng kiểm tra lại đường truyền mạng.";
+            dynError.classList.remove('hidden');
+        } finally {
+            // End Loading
+            btnSendOtp.disabled = false;
+            btnSendOtp.classList.remove('opacity-70', 'cursor-not-allowed');
+            spinnerSend.classList.add('hidden');
+        }
+    });
+
+    // Xác minh mã OTP sau khi User nhập
+    btnVerifyOtp.addEventListener('click', () => {
+        const userEntered = otpInput.value.trim();
+
+        if (userEntered === systemGeneratedOTP && systemGeneratedOTP !== "") {
+            // Khớp mã -> Chạy Submit cái Form thật, đẩy Info về Server tạo User -> Thành công
+            realForm.submit();
+        } else {
+            // Báo lỗi sai mã
+            otpError.classList.remove('hidden');
+            otpInput.classList.add('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+        }
+    });
+
+    // Clear lỗi khi gõ lại
+    otpInput.addEventListener('input', () => {
+        otpError.classList.add('hidden');
+        otpInput.classList.remove('border-red-500', 'focus:ring-red-500', 'focus:border-red-500');
+    });
+
+    // Nhấn Enter tự check
+    otpInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            btnVerifyOtp.click();
+        }
+    });
+
+    // Nút quay lại (Sửa email lỡ nhập sai)
+    btnBack.addEventListener('click', () => {
+        step2Otp.classList.add('hidden');
+        step1Form.classList.remove('hidden');
+        formTitle.textContent = "Đăng Ký Tài Khoản";
+    });
+
+</script>
 {% endblock %}

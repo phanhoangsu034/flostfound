@@ -8,8 +8,8 @@
 <!-- Outgoing Call Modal (Zalo style) -->
 <div id="outgoingCallModal"
     class="hidden fixed inset-0 bg-black/60 z-[70] flex items-center justify-center backdrop-blur-sm">
-    <div
-        class="bg-gray-900 rounded-3xl p-8 w-80 shadow-2xl transform transition-all text-center border border-gray-700 bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/static/team_photo.png');">
+    <div class="bg-gray-900 rounded-3xl p-8 w-80 shadow-2xl transform transition-all text-center border border-gray-700 bg-cover bg-center"
+        style="background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/static/team_photo.png');">
         <div class="w-24 h-24 rounded-full bg-gray-700 mx-auto flex items-center justify-center mb-6 relative">
             <img id="outgoingAvatar" src="" class="w-full h-full rounded-full object-cover z-10">
             <span class="absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-30 animate-ping"></span>
@@ -28,8 +28,8 @@
 <!-- Incoming Call Modal -->
 <div id="incomingCallModal"
     class="hidden fixed inset-0 bg-black/60 z-[70] flex items-center justify-center backdrop-blur-sm">
-    <div
-        class="bg-gray-900 rounded-3xl p-8 w-80 shadow-2xl transform transition-all text-center border border-gray-700 bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/static/team_photo.png');">
+    <div class="bg-gray-900 rounded-3xl p-8 w-80 shadow-2xl transform transition-all text-center border border-gray-700 bg-cover bg-center"
+        style="background-image: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('/static/team_photo.png');">
         <div
             class="w-24 h-24 rounded-full bg-gray-700 mx-auto flex items-center justify-center mb-6 relative hover:scale-105 transition">
             <img id="incomingAvatar" src="" class="w-full h-full rounded-full object-cover z-10 hidden">
@@ -56,7 +56,9 @@
 <!-- Active Call Screen -->
 <div id="activeCallScreen" class="hidden fixed inset-0 bg-gray-950 z-[60] flex flex-col items-center justify-center">
     <!-- Nền thoại thay thế Camera -->
-    <div id="voiceCallBg" class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-0 bg-cover bg-center" style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/team_photo.png');">
+    <div id="voiceCallBg"
+        class="hidden absolute inset-0 bg-gray-900 flex flex-col items-center justify-center z-0 bg-cover bg-center"
+        style="background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/static/team_photo.png');">
         <div class="w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center mb-6 shadow-lg">
             <i class="fas fa-user text-6xl text-gray-500"></i>
         </div>
@@ -179,7 +181,7 @@
             }
 
             const hasVideoTrack = globalCallState.localStream.getVideoTracks().length > 0;
-            
+
             if (hasVideoTrack) {
                 localVideo.srcObject = globalCallState.localStream;
                 if (video) {
@@ -231,7 +233,7 @@
                 globalCallState.remoteStream.addTrack(event.track);
                 stream = globalCallState.remoteStream;
             }
-            
+
             if (remoteVideo.srcObject !== stream) {
                 remoteVideo.srcObject = stream;
             }
@@ -270,7 +272,7 @@
             console.log("Trạng thái mạng WebRTC: ", globalCallState.peerConnection.connectionState);
             if (globalCallState.peerConnection.connectionState === 'connected') {
                 document.getElementById('callStatusText').classList.replace('bg-green-500/80', 'bg-blue-600/80');
-                remoteVideo.play().catch(e => {}); // Đảm bảo lại một lần nữa
+                remoteVideo.play().catch(e => { }); // Đảm bảo lại một lần nữa
             } else if (globalCallState.peerConnection.connectionState === 'failed' || globalCallState.peerConnection.connectionState === 'disconnected') {
                 document.getElementById('callStatusText').classList.replace('bg-blue-600/80', 'bg-red-500/80');
                 document.getElementById('callStatusText').innerText = "Mất kết nối mạng...";
@@ -321,8 +323,8 @@
     // Giao diện Khởi tạo Cuộc gọi toàn cục (Gọi ra ngoài)
     window.startWebRTCCall = async (targetId, targetUsername, targetAvatar, isVideo) => {
         // [iOS Safari Hack]: Mở khóa Audio/Video Context bằng một thao tác giả (Dummy Play) ngay trong thân hàm sự kiện Click.
-        remoteVideo.play().catch(e => {});
-        localVideo.play().catch(e => {});
+        remoteVideo.play().catch(e => { });
+        localVideo.play().catch(e => { });
 
         if (globalCallState.isCalling) return;
 
@@ -421,7 +423,7 @@
                 }, 1000);
 
                 await globalCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
-                
+
                 // Add queued ICE candidates
                 while (globalCallState.iceCandidateQueue.length > 0) {
                     let candidate = globalCallState.iceCandidateQueue.shift();
@@ -477,8 +479,8 @@
 
     async function handleAcceptCall(withVideo) {
         // [iOS Safari Hack]: Mở khóa Audio/Video Context bằng một thao tác giả
-        remoteVideo.play().catch(e => {});
-        localVideo.play().catch(e => {});
+        remoteVideo.play().catch(e => { });
+        localVideo.play().catch(e => { });
 
         stopRingtones();
         incomingCallModal.classList.add('hidden');
@@ -503,7 +505,7 @@
         // Map cấu hình của người gọi cho mình
         if (globalCallState.pendingSignal) {
             await globalCallState.peerConnection.setRemoteDescription(new RTCSessionDescription(globalCallState.pendingSignal));
-            
+
             // Add queued ICE candidates
             while (globalCallState.iceCandidateQueue.length > 0) {
                 let candidate = globalCallState.iceCandidateQueue.shift();
@@ -548,7 +550,7 @@
             globalCallState.localStream.getVideoTracks()[0].enabled = !globalCallState.isCamOff;
             const btn = document.getElementById('toggleWebRtcCamBtn');
             btn.innerHTML = globalCallState.isCamOff ? '<i class="fas fa-video-slash text-xl text-red-500"></i>' : '<i class="fas fa-video text-xl"></i>';
-            
+
             if (!globalCallState.isCamOff) {
                 localVideoContainer.classList.remove('hidden');
                 voiceCallBg.classList.add('hidden'); // If we turn on video, we might want to hide our own background view? 
