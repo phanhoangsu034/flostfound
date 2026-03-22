@@ -204,72 +204,67 @@
     // Lắng nghe nếu người dùng cắm thêm WebCam rời
     navigator.mediaDevices.ondevicechange = checkCameraDevices;
 
-    async function globalInitMedia(video = true) {
+    async function globalInitMedia(wantsVideo = true) {
         try {
-            // Always try to get both so it's possible to toggle later, but handle lack of camera
-            let constraints = {
-                audio: true,
-                video: video ? { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" } : false
+            // Messenger style: Always try to get both from the start
+            let constraints = { 
+                audio: true, 
+                video: { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" }
             };
-
-            // Nếu đã có stream cũ thì stop các track video trước khi xin quyền mới (để switch cam)
-            if (globalCallState.localStream && video) {
-                globalCallState.localStream.getVideoTracks().forEach(track => track.stop());
-            }
-
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
+            
+            // Stop old tracks if switching cameras or re-initializing
             if (globalCallState.localStream) {
-                // Giữ lại audio track cũ nếu chỉ muốn đổi video (tránh giật tiếng)
-                // Tuy nhiên dùng cách đơn giản là thay toàn bộ stream cho ổn định
-                globalCallState.localStream = stream;
-            } else {
-                globalCallState.localStream = stream;
+                globalCallState.localStream.getTracks().forEach(track => track.stop());
             }
 
-            const hasVideoTrack = globalCallState.localStream.getVideoTracks().length > 0;
+            // Always request BOTH
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            globalCallState.localStream = stream;
 
-            if (hasVideoTrack) {
-                localVideo.srcObject = globalCallState.localStream;
-                if (video) {
+            const videoTrack = stream.getVideoTracks()[0];
+            const hasVideoHardware = !!videoTrack;
+
+            if (hasVideoHardware) {
+                localVideo.srcObject = stream;
+                
+                // Logic Messenger: Nếu CHỈ MUỐN gọi thoại -> Xin cam xong rồi tắt liền (nhưng vẫn giữ track)
+                if (wantsVideo) {
                     globalCallState.isCamOff = false;
-                    globalCallState.localStream.getVideoTracks()[0].enabled = true;
-                    // localVideoContainer.classList.remove('hidden'); // Never hide container, just show overlay
+                    videoTrack.enabled = true;
                     localVideo.classList.remove('hidden');
                     document.getElementById('localCamOffOverlay').classList.add('hidden');
-                    // voiceCallBg.classList.add('hidden'); // Only hide remote bg when remote video is active
                     document.getElementById('toggleWebRtcCamBtn').innerHTML = '<i class="fas fa-video text-xl"></i>';
                 } else {
                     globalCallState.isCamOff = true;
-                    globalCallState.localStream.getVideoTracks()[0].enabled = false;
+                    videoTrack.enabled = false; // "Che bằng tay" ngay từ đầu
                     localVideo.classList.add('hidden');
                     document.getElementById('localCamOffOverlay').classList.remove('hidden');
                     document.getElementById('toggleWebRtcCamBtn').innerHTML = '<i class="fas fa-video-slash text-xl text-red-500"></i>';
                 }
                 document.getElementById('toggleWebRtcCamBtn').classList.remove('hidden');
             } else {
-                // No video hardware at all
+                // No camera hardware
                 localVideo.classList.add('hidden');
                 document.getElementById('localCamOffOverlay').classList.remove('hidden');
                 document.getElementById('toggleWebRtcCamBtn').classList.add('hidden');
             }
 
-            // Nếu đang trong cuộc gọi thì thay thế track cho PeerConnection
-            if (globalCallState.peerConnection && hasVideoTrack) {
-                const videoTrack = globalCallState.localStream.getVideoTracks()[0];
-                const sender = globalCallState.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                if (sender) {
-                    sender.replaceTrack(videoTrack);
-                }
-            }
-
             return true;
         } catch (error) {
-            console.error("Media Error:", error);
-            if (!video) {
-                alert("Không thể truy cập Microphone!");
+            console.error("Media Error (Messenger Style):", error);
+            // Fallback to audio only if camera permission denied
+            try {
+                const audioOnlyStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                globalCallState.localStream = audioOnlyStream;
+                globalCallState.isCamOff = true;
+                localVideo.classList.add('hidden');
+                document.getElementById('localCamOffOverlay').classList.remove('hidden');
+                document.getElementById('toggleWebRtcCamBtn').classList.add('hidden');
+                return true;
+            } catch (aErr) {
+                alert("Không thể truy cập Microphone! Hãy cấp quyền trên trình duyệt.");
+                return false;
             }
-            return false;
         }
     }
 
@@ -651,18 +646,24 @@
     });
 
     document.getElementById('toggleWebRtcCamBtn').addEventListener('click', () => {
-        if (globalCallState.localStream && globalCallState.localStream.getVideoTracks().length > 0) {
-            globalCallState.isCamOff = !globalCallState.isCamOff;
-            globalCallState.localStream.getVideoTracks()[0].enabled = !globalCallState.isCamOff;
-            const btn = document.getElementById('toggleWebRtcCamBtn');
-            btn.innerHTML = globalCallState.isCamOff ? '<i class="fas fa-video-slash text-xl text-red-500"></i>' : '<i class="fas fa-video text-xl"></i>';
+        if (globalCallState.localStream) {
+            const videoTrack = globalCallState.localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                globalCallState.isCamOff = !globalCallState.isCamOff;
+                videoTrack.enabled = !globalCallState.isCamOff; // Messenger style: Chỉ bật/tắt track, ko ngắt stream
+                
+                const btn = document.getElementById('toggleWebRtcCamBtn');
+                btn.innerHTML = globalCallState.isCamOff ? '<i class="fas fa-video-slash text-xl text-red-500"></i>' : '<i class="fas fa-video text-xl"></i>';
 
-            if (!globalCallState.isCamOff) {
-                localVideo.classList.remove('hidden');
-                document.getElementById('localCamOffOverlay').classList.add('hidden');
+                if (!globalCallState.isCamOff) {
+                    localVideo.classList.remove('hidden');
+                    document.getElementById('localCamOffOverlay').classList.add('hidden');
+                } else {
+                    localVideo.classList.add('hidden');
+                    document.getElementById('localCamOffOverlay').classList.remove('hidden');
+                }
             } else {
-                localVideo.classList.add('hidden');
-                document.getElementById('localCamOffOverlay').classList.remove('hidden');
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Máy bạn không có Camera để bật', showConfirmButton: false, timer: 3000 });
             }
         } else {
             Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Không tìm thấy camera để bật', showConfirmButton: false, timer: 3000 });
