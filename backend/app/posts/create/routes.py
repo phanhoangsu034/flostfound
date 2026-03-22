@@ -15,8 +15,7 @@ from app.services.ai_trainer import refresh_ai_model
 bp = Blueprint('posts_create', __name__)
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    return '.' in filename
 
 from datetime import datetime
 

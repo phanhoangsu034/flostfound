@@ -75,7 +75,7 @@ def register_blueprints(app):
     
     # Search & Filter blueprint
     from app.search.routes import bp as search_bp
-    
+
     # Register all blueprints
     app.register_blueprint(auth_login_bp)
     app.register_blueprint(auth_register_bp)

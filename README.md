@@ -396,6 +396,33 @@ signInWithPopup(auth, new GoogleAuthProvider()).then(result => {
 
 ---
 
+<!-- ## ⚠️ Giới hạn của Facebook Login - Tại Sao Không Public Được?
+
+### 📌 Vấn đề gặp phải
+Tính năng **Đăng nhập bằng Facebook** đã được tích hợp hoàn chỉnh về mặt kỹ thuật (Firebase Auth SDK + Backend API), tuy nhiên **không thể cho toàn bộ người dùng public sử dụng** do chính sách bảo mật của Meta (Facebook).
+
+### 🕵️ Nguyên nhân gốc rễ - Scandal Cambridge Analytica (2018)
+Năm 2018, công ty **Cambridge Analytica** đã lợi dụng Facebook Login API để thu thập trái phép dữ liệu của **87 triệu tài khoản Facebook** mà người dùng không hay biết. Dữ liệu này được dùng để lập hồ sơ tâm lý và **can thiệp bầu cử tổng thống Mỹ 2016**. Facebook bị kiện ra tòa và bị **phạt 5 tỷ USD** bởi Ủy ban Thương mại Liên bang Hoa Kỳ (FTC), đồng thời bị Quốc hội Mỹ điều trần.
+
+### 🔒 Hệ quả - Meta siết chặt chính sách App Review
+Sau scandal trên, Meta (Facebook) ban hành chính sách bắt buộc **tất cả ứng dụng bên thứ ba** muốn truy cập dữ liệu người dùng (kể cả chỉ Email) **phải trải qua quy trình App Review và xác minh danh tính**:
+
+| Yêu cầu | Mô tả |
+|---|---|
+| **Xác minh doanh nghiệp** | Phải có pháp nhân công ty hoặc CMND cá nhân |
+| **App Review** | Meta duyệt thủ công mục đích sử dụng dữ liệu |
+| **Privacy Policy** | Phải có trang chính sách bảo mật công khai |
+| **Data Deletion URL** | Phải có endpoint để người dùng xóa dữ liệu |
+
+### 🎓 Ảnh hưởng đến Đồ án Sinh viên
+Chính sách này được thiết kế cho **doanh nghiệp có pháp nhân**, không dự tính đến trường hợp sinh viên làm đồ án. Do nhóm không có giấy phép kinh doanh và thời gian xét duyệt của Meta không cố định (1 ngày đến vài tuần), việc Public App Facebook **nằm ngoài tầm kiểm soát của nhóm**.
+
+### ✅ Giải pháp thay thế đã áp dụng
+- **Google Login**: Hoạt động hoàn toàn bình thường, không yêu cầu App Review
+- **Facebook Login cho Tester**: Có thể add tối đa 50 tài khoản Facebook cụ thể vào danh sách Tester để sử dụng tính năng này trong môi trường Development -->
+
+---
+
 ## 🆘 Hỗ trợ
 Nếu quá trình cài đặt gặp lỗi xuất hiện trên Terminal báo đỏ (đặc biệt các dạng lỗi `ImportError` ở thư viện scikit-learn, psycopg binary hoặc cài thiếu package eventlet / SocketIO), bạn hãy copy đoạn text log lỗi đó vào box chat team hoặc hỏi ChatBot để được hỗ trợ lệnh pip cài bổ sung ngay kịp thời!
 

@@ -51,7 +51,11 @@
                                     {% if item.last_message.sender_id == current_user.id %}
                                     <span class="text-gray-400">Bạn:</span>
                                     {% endif %}
+                                    {% if item.last_message.body.startswith('[IMAGE]') %}
+                                    [Hình ảnh]
+                                    {% else %}
                                     {{ item.last_message.body }}
+                                    {% endif %}
                                 </p>
                             </div>
                         </div>

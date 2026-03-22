@@ -51,13 +51,20 @@
         <div class="flex {% if msg.sender_id == current_user.id %} justify-end {% else %} justify-start {% endif %}">
             <div
                 class="max-w-[70%] rounded-lg px-4 py-2 shadow-sm 
-                {% if msg.sender_id == current_user.id %} bg-orange-600 text-white rounded-br-none {% else %} bg-white text-gray-800 rounded-bl-none {% endif %}">
-                <p>{{ msg.body }}</p>
+                {% if msg.sender_id == current_user.id %} bg-orange-600 text-white rounded-br-none {% else %} bg-white text-gray-800 rounded-bl-none {% endif %} overflow-hidden transform transition hover:scale-[1.02]">
+
+                {% if msg.body.startswith('[IMAGE]') %}
+                <img src="{{ msg.body.replace('[IMAGE]', '') }}"
+                    class="max-w-full rounded-md object-cover max-h-64 cursor-pointer shadow-sm transition-transform hover:scale-[1.02]"
+                    onclick="openImageModal(this.src)">
+                {% else %}
+                <p class="break-words">{{ msg.body }}</p>
+                {% endif %}
+
                 <span class="text-[10px] block mt-1 opacity-70 text-right chat-time"
                     data-utc="{{ msg.timestamp.isoformat() }}Z">
                     {{ msg.timestamp.strftime('%H:%M') }}
                 </span>
-
             </div>
         </div>
         {% endfor %}
@@ -65,15 +72,30 @@
 
     <!-- Input Area -->
     <div class="p-4 bg-white border-t">
-        <form id="chatForm" class="flex gap-2">
-            <input type="text" id="messageInput" placeholder="Nhập tin nhắn..." required
-                class="flex-grow px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-100">
+        <form id="chatForm" class="flex gap-2 items-center">
+            <div class="relative flex-grow">
+                <input type="text" id="messageInput" placeholder="Nhập tin nhắn..."
+                    class="w-full pl-4 pr-12 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 bg-gray-100">
+                <label for="imageInput"
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-500 hover:text-orange-500 transition m-0 flex items-center justify-center">
+                    <i class="fas fa-image text-lg"></i>
+                </label>
+                <input type="file" id="imageInput" accept="image/*" multiple class="hidden">
+            </div>
             <button type="submit"
-                class="bg-orange-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-orange-700 transition">
+                class="bg-orange-600 text-white w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center hover:bg-orange-700 transition">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </form>
     </div>
+</div>
+
+<!-- Lightbox Modal for Full Size Images -->
+<div id="imageModal"
+    class="hidden fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+    <button onclick="closeImageModal()"
+        class="absolute top-4 right-6 text-white text-4xl font-bold cursor-pointer hover:text-orange-500 transition">&times;</button>
+    <img id="modalImage" src="" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
 </div>
 {% endblock %}
 
@@ -104,6 +126,22 @@
     // Scroll to bottom
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
+    function openImageModal(src) {
+        document.getElementById('modalImage').src = src;
+        document.getElementById('imageModal').classList.remove('hidden');
+    }
+
+    function closeImageModal() {
+        document.getElementById('imageModal').classList.add('hidden');
+        document.getElementById('modalImage').src = '';
+    }
+
+    document.getElementById('imageModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeImageModal();
+        }
+    });
+
     document.getElementById('chatForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const input = document.getElementById('messageInput');
@@ -115,6 +153,65 @@
                 message: message
             });
             input.value = '';
+        }
+    });
+
+    // Upload ảnh lên Cloudinary
+    document.getElementById('imageInput').addEventListener('change', async function (e) {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        // Bỏ validation khắt khe, chỉ cần bắt đầu bằng image/ (hỗ trợ mọi loại ảnh)
+        for (let i = 0; i < files.length; i++) {
+            if (!files[i].type.startsWith('image/')) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Vui lòng chỉ chọn file ảnh', showConfirmButton: false, timer: 3000 });
+                e.target.value = '';
+                return;
+            }
+        }
+
+        Swal.fire({
+            title: files.length > 1 ? `Đang gửi ${files.length} ảnh...` : 'Đang gửi ảnh...',
+            allowEscapeKey: false,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const uploadPromises = Array.from(files).map(async (file) => {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const response = await fetch("{{ url_for('messages_chat.upload_image') }}", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.url) {
+                    return data.url;
+                } else {
+                    throw new Error(data.error || "Không thể tải lên máy chủ.");
+                }
+            });
+
+            const urls = await Promise.all(uploadPromises);
+
+            // Upload thành công, gửi từng link ảnh qua socket
+            for (const url of urls) {
+                socket.emit('send_message', {
+                    recipient_id: recipientId,
+                    message: "[IMAGE]" + url
+                });
+            }
+        } catch (error) {
+            console.error("Lỗi Upload Ảnh:", error);
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Tải ảnh thất bại', showConfirmButton: false, timer: 3000 });
+        } finally {
+            Swal.close();
+            e.target.value = ''; // Reset input
         }
     });
 
@@ -137,9 +234,17 @@
         const timeStr = date.getHours().toString().padStart(2, '0') + ':' +
             date.getMinutes().toString().padStart(2, '0');
 
+        let contentHtml = '';
+        if (data.message.startsWith('[IMAGE]')) {
+            const imgSrc = data.message.replace('[IMAGE]', '');
+            contentHtml = `<img src="${imgSrc}" class="max-w-full rounded-md object-cover max-h-64 cursor-pointer shadow-sm transition-transform hover:scale-[1.02]" onclick="openImageModal(this.src)">`;
+        } else {
+            contentHtml = `<p class="break-words">${data.message}</p>`;
+        }
+
         div.innerHTML = `
-            <div class="max-w-[70%] rounded-lg px-4 py-2 shadow-sm ${isMe ? 'bg-orange-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'}">
-                <p>${data.message}</p>
+            <div class="max-w-[70%] rounded-lg px-4 py-2 shadow-sm ${isMe ? 'bg-orange-600 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none'} overflow-hidden transform transition hover:scale-[1.02]">
+                ${contentHtml}
                  <span class="text-[10px] block mt-1 opacity-70 text-right">${timeStr}</span>
             </div>
         `;

@@ -81,7 +81,7 @@
 
     <!-- Toolbars -->
     <div
-        class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-3 sm:gap-6 z-[20] bg-black/60 px-4 sm:px-8 py-3 sm:py-4 rounded-full backdrop-blur-md border border-gray-600 w-max max-w-[90%]">
+        class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-3 sm:gap-6 z-[20] bg-black/60 px-4 sm:px-8 py-3 sm:py-4 rounded-full backdrop-blur-md border border-gray-600 w-max max-w-[90%] flex-wrap justify-center">
         <button id="toggleWebRtcMicBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"><i
                 class="fas fa-microphone text-lg sm:text-xl"></i></button>
@@ -94,6 +94,9 @@
         <button id="toggleWebRtcCamBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"><i
                 class="fas fa-video text-lg sm:text-xl"></i></button>
+        <button id="mirrorCamBtn"
+            class="w-10 h-10 sm:w-14 sm:h-14 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-white transition"
+            title="Đảo chiều Video (Mirror)"><i class="fas fa-exchange-alt text-lg sm:text-xl"></i></button>
         <button id="minimizeBtn"
             class="w-10 h-10 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center text-white transition"
             title="Chat Song Song (Thu nhỏ)"><i class="fas fa-compress-alt text-lg sm:text-xl"></i></button>
@@ -348,7 +351,7 @@
         globalCallState.ringingTimeout = setTimeout(() => {
             window.globalSocket.emit('end_call', { to: targetId, duration: 0 });
             closeCall();
-            alert("Không có phản hồi từ người dùng.");
+            Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Không có phản hồi từ người dùng', showConfirmButton: false, timer: 3000 });
         }, 60000);
 
         createGlobalPeerConnection();
@@ -364,6 +367,28 @@
 
     function initWebRTCSocketEvents() {
         window.globalSocket.on('call_made', async (data) => {
+            // XỬ LÝ CONFLICT: "Đang gọi cho nhau" cùng 1 lúc (Cross-Call)
+            if (globalCallState.isCalling && globalCallState.recipientId == data.from) {
+                console.log("Phát hiện gọi chéo! Đang phân giải xung đột...");
+                if (webrtc_currentUserId < data.from) {
+                    // ID mình bé hơn -> lùi làm người nghe (Callee).
+                    // Tự động nhận cuộc gọi của họ bằng data.signal, tắt cái mình đang chờ.
+                    globalCallState.pendingSignal = data.signal;
+                    globalCallState.iceCandidateQueue = [];
+                    // Khéo léo rút khỏi quyền caller, đóng OutgoingModal
+                    outgoingCallModal.classList.add('hidden');
+                    stopRingtones();
+                    clearTimeout(globalCallState.ringingTimeout);
+                    // Ép mở luôn Call
+                    handleAcceptCall(data.is_video !== false);
+                } else {
+                    // Mình ID lớn hơn -> giữ nguyên quyền Gọi (Caller). Ignored cái call_made này.
+                    // Đợi máy bên kia (hoạt động theo logic trên) Tự động đẩy Answer về cho mình.
+                    console.log("Xung đột: Mình làm Caller. Đợi máy bên kia tự Auto-Answer.");
+                }
+                return;
+            }
+
             if (globalCallState.isCalling || !incomingCallModal.classList.contains('hidden')) {
                 window.globalSocket.emit('user_busy', { to: data.from });
                 return;
@@ -444,14 +469,14 @@
 
         window.globalSocket.on('call_rejected', (data) => {
             if (data.from == globalCallState.recipientId) {
-                alert("Người dùng kia đã từ chối cuộc gọi.");
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Người dùng kia đã từ chối cuộc gọi.', showConfirmButton: false, timer: 3000 });
                 closeCall();
             }
         });
 
         window.globalSocket.on('call_busy', (data) => {
             if (data.from == globalCallState.recipientId) {
-                alert("Người dùng hiện đang bận.");
+                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Người dùng hiện đang bận.', showConfirmButton: false, timer: 3000 });
                 closeCall();
             }
         });
@@ -559,7 +584,7 @@
                 localVideoContainer.classList.add('hidden');
             }
         } else {
-            alert("Không tìm thấy camera để bật!");
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Không tìm thấy camera để bật', showConfirmButton: false, timer: 3000 });
         }
     });
 
@@ -583,6 +608,18 @@
             screen.classList.add('inset-0');
             screen.classList.remove('top-24', 'right-6', 'w-80', 'h-[30rem]', 'rounded-3xl', 'shadow-2xl', 'overflow-hidden', 'border-2', 'border-orange-500');
             document.getElementById('minimizeBtn').innerHTML = '<i class="fas fa-compress-alt text-lg sm:text-xl"></i>';
+        }
+    });
+
+    document.getElementById('mirrorCamBtn').addEventListener('click', () => {
+        if (localVideo.classList.contains('scale-x-[-1]')) {
+            localVideo.classList.remove('scale-x-[-1]');
+            // Chế độ thật (cho người khác đọc được chữ)
+            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-exchange-alt text-lg sm:text-xl text-green-400"></i>';
+        } else {
+            localVideo.classList.add('scale-x-[-1]');
+            // Chế độ soi gương (mặc định)
+            document.getElementById('mirrorCamBtn').innerHTML = '<i class="fas fa-exchange-alt text-lg sm:text-xl"></i>';
         }
     });
 </script>

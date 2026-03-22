@@ -1,11 +1,12 @@
 """
 Chat routes
 """
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
 from app.models.user import User
 from app.models.message import Message
+import cloudinary.uploader
 
 bp = Blueprint('messages_chat', __name__)
 
@@ -31,3 +32,22 @@ def chat(recipient_id):
              db.session.rollback()
     
     return render_template('messages/chat.html', recipient=recipient, messages=messages, datetime=datetime)
+
+@bp.route('/upload_image', methods=['POST'])
+@login_required
+def upload_image():
+    if 'image' not in request.files:
+        return jsonify({"error": "Vui lòng chọn ảnh."}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": "Tập tin rỗng."}), 400
+        
+    try:
+        # Thêm vào folder flostfound/messages trên cloudinary
+        result = cloudinary.uploader.upload(file, folder="flostfound/messages")
+        return jsonify({"url": result['secure_url']})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Lỗi máy chủ khi tải ảnh."}), 500

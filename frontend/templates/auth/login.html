@@ -16,8 +16,14 @@
                     class="text-sm text-orange-600 hover:text-orange-800 hover:underline"><i
                         class="fas fa-lock text-xs mr-1"></i> Quên mật khẩu?</a>
             </div>
-            <input type="password" name="password" required
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <div class="relative">
+                <input id="password-input" type="password" name="password" required
+                    class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 pr-10">
+                <span id="toggle-password"
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-orange-600 transition-colors">
+                    <i class="fas fa-eye" id="eye-icon"></i>
+                </span>
+            </div>
         </div>
         <button type="submit"
             class="w-full bg-orange-600 text-white font-bold py-2 px-4 rounded-md hover:bg-orange-700 transition duration-300">
@@ -35,19 +41,18 @@
                 </div>
             </div>
 
-            <div class="mt-6 grid grid-cols-2 gap-3">
+            <div class="mt-6 space-y-3">
                 <button type="button" id="btn-google"
-                    class="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:shadow transition duration-300">
-                    <img class="h-5 w-5 mr-2" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
-                    Google
+                    class="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-orange-600 hover:border-orange-300 hover:shadow-md transition-all duration-300">
+                    <img class="h-6 w-6 mr-3" src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google">
+                    Tiếp tục với Google
                 </button>
-                <button type="button" id="btn-facebook"
-                    class="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:shadow transition duration-300">
-                    <img class="h-5 w-5 mr-2"
-                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png"
-                        alt="Facebook">
-                    Facebook
-                </button>
+                <!-- Facebook đang tạm ẩn cho Public Users -->
+                <!-- <button type="button" id="btn-facebook"
+                    class="w-full flex justify-center items-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-base font-semibold text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 hover:shadow-md transition-all duration-300">
+                    <img class="h-6 w-6 mr-3" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/2021_Facebook_icon.svg/2048px-2021_Facebook_icon.svg.png" alt="Facebook">
+                    Tiếp tục với Facebook
+                </button> -->
             </div>
         </div>
     </form>
@@ -149,5 +154,31 @@
             alert('Hệ thống từ chối: ' + data.message);
         }
     }
+</script>
+
+<script>
+    // Xử lý bật/tắt hiển thị mật khẩu
+    document.addEventListener('DOMContentLoaded', function () {
+        const togglePassword = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password-input');
+        const eyeIcon = document.getElementById('eye-icon');
+
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function () {
+                // Đổi type password <-> text
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+
+                // Đổi icon con mắt
+                if (type === 'text') {
+                    eyeIcon.classList.remove('fa-eye');
+                    eyeIcon.classList.add('fa-eye-slash');
+                } else {
+                    eyeIcon.classList.remove('fa-eye-slash');
+                    eyeIcon.classList.add('fa-eye');
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

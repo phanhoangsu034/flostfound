@@ -32,13 +32,27 @@ def handle_message(data):
         'timestamp': msg.timestamp.isoformat() + 'Z'
     }, room=room)
     
-    # Emit notification to recipient's private room
+    # Emit notification to recipient's private room (Socket.IO in-app)
     notification_room = f"user_{recipient_id}"
     emit('notification', {
         'sender_id': current_user.id,
         'sender_name': current_user.username,
         'message': body
     }, room=notification_room)
+
+    # 🔥 FCM Push Notification (Background - khi user đóng tab/offline)
+    try:
+        from app.notifications.push_service import send_push_to_user
+        send_push_to_user(
+            user_id=int(recipient_id),
+            title=f"💬 {current_user.username}",
+            body=body[:100] + ('...' if len(body) > 100 else ''),
+            data={'type': 'message', 'sender_id': str(current_user.id)},
+            url=f'/chat/{current_user.id}'
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"FCM push error: {e}")
 
 @socketio.on('join_chat')
 def on_join(data):
@@ -88,6 +102,21 @@ def on_call_user(data):
         'from_avatar': current_user.avatar,
         'is_video': is_video
     }, room=room)
+
+    # 🔥 FCM Push cho cuộc gọi đến (quan trọng khi user đóng tab)
+    try:
+        from app.notifications.push_service import send_push_to_user
+        call_type = '📹 Video call' if is_video else '📞 Voice call'
+        send_push_to_user(
+            user_id=int(user_to_call),
+            title=f"{call_type} đến từ {current_user.username}",
+            body="Nhấn để nghe máy",
+            data={'type': 'call', 'caller_id': str(current_user.id), 'is_video': str(is_video)},
+            url=f'/chat/{current_user.id}'
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"FCM push for call error: {e}")
 
 
 @socketio.on('user_busy')
