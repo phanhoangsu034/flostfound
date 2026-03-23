@@ -34,32 +34,91 @@
     const locSelect = document.getElementById("filter-location");
     const subLocSelect = document.getElementById("filter-sub-location");
     const catSelect = document.getElementById("filter-category");
+    const dateRangeSelect = document.getElementById("filter-date-range");
     const activeFiltersEl = document.getElementById("active-filters");
     const grid = document.getElementById("items-grid");
     const paginationEl = document.getElementById("pagination-bar");
 
     // ─── State ────────────────────────────────────────────
-    let filters = { q: "", type: "", status: "", location: "", sub_location: "", category: "", sort: "newest", page: 1 };
+    let filters = { q: "", type: "", status: "", location: "", sub_location: "", category: "", date_range: "", sort: "newest", page: 1 };
     let locationsData = [];
     let debounceTimer = null;
+    let liveSearchTimer = null;
 
     // ─── Init ─────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {
         loadLocations();
         loadCategories();
+        
+        // Restore state from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("q")) filters.q = urlParams.get("q");
+        if (urlParams.has("type")) filters.type = urlParams.get("type");
+        if (urlParams.has("status")) filters.status = urlParams.get("status");
+        if (urlParams.has("location")) filters.location = urlParams.get("location");
+        if (urlParams.has("sub_location")) filters.sub_location = urlParams.get("sub_location");
+        if (urlParams.has("category")) filters.category = urlParams.get("category");
+        if (urlParams.has("date_range")) filters.date_range = urlParams.get("date_range");
+        if (urlParams.has("sort")) filters.sort = urlParams.get("sort");
+        if (urlParams.has("page")) filters.page = parseInt(urlParams.get("page"), 10) || 1;
+
+        // Sync UI with restored state
+        searchInput.value = filters.q;
+        if (filters.q) {
+            clearBtn.classList.remove("hidden");
+            clearBtn.classList.add("flex");
+            document.getElementById("sort-relevance").classList.remove("hidden");
+        }
+        sortSelect.value = filters.sort;
+        catSelect.value = filters.category;
+        dateRangeSelect.value = filters.date_range;
+        
+        // Chips sync is handled by doSearch/updateActiveFilters implicitly or we can just set their classes
+        document.querySelectorAll(".type-chip").forEach(c => {
+            const val = c.dataset.value;
+            c.className = "filter-chip " + (val === filters.type ? (val==="Lost"?"active-lost":val==="Found"?"active-found":"active-generic") : "inactive");
+        });
+        document.querySelectorAll(".status-chip").forEach(c => {
+            const val = c.dataset.value;
+            c.className = "filter-chip " + (val === filters.status ? "active-generic" : "inactive");
+        });
+
         bindEvents();
+        // Location dropdown needs to wait for data (locSelect.value will be set later in doSearch/loadLocations wrapper, but we'll let doSearch run)
         doSearch();            // initial load
     });
 
     // ─── Event binding ────────────────────────────────────
     function bindEvents() {
-        // Search input – debounced autocomplete
+        // Search input – debounced autocomplete & live search
         searchInput.addEventListener("input", () => {
-            const val = searchInput.value.trim();
-            clearBtn.classList.toggle("hidden", val.length === 0);
-            clearBtn.classList.toggle("flex", val.length > 0);
+            const val = searchInput.value;
+            const isFilled = val.trim().length > 0;
+            
+            clearBtn.classList.toggle("hidden", !isFilled);
+            clearBtn.classList.toggle("flex", isFilled);
+            
+            // Toggle relevance sort option
+            const relOption = document.getElementById("sort-relevance");
+            if (isFilled) relOption.classList.remove("hidden");
+            else {
+                relOption.classList.add("hidden");
+                if (sortSelect.value === "relevance") {
+                    sortSelect.value = "newest";
+                    filters.sort = "newest";
+                }
+            }
+
             clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => fetchAutocomplete(val), DEBOUNCE_MS);
+            debounceTimer = setTimeout(() => fetchAutocomplete(val.trim()), DEBOUNCE_MS);
+            
+            // Live Search triggered after user stops typing for 500ms
+            clearTimeout(liveSearchTimer);
+            liveSearchTimer = setTimeout(() => {
+                filters.q = val.trim();
+                filters.page = 1;
+                doSearch();
+            }, 500);
         });
 
         searchInput.addEventListener("keydown", (e) => {
@@ -127,6 +186,13 @@
             doSearch();
         });
 
+        locSelect.addEventListener("mouseover", (e) => {
+            // Only update the sub-locations visually if hovered, don't trigger search
+            if (e.target.tagName === 'OPTION' && e.target.value) {
+                populateSubLocations(e.target.value);
+            }
+        });
+
         subLocSelect.addEventListener("change", () => {
             filters.sub_location = subLocSelect.value;
             filters.page = 1;
@@ -136,6 +202,13 @@
         // Category
         catSelect.addEventListener("change", () => {
             filters.category = catSelect.value;
+            filters.page = 1;
+            doSearch();
+        });
+
+        // Date Range
+        dateRangeSelect.addEventListener("change", () => {
+            filters.date_range = dateRangeSelect.value;
             filters.page = 1;
             doSearch();
         });
@@ -158,7 +231,7 @@
 
     // ─── Autocomplete ─────────────────────────────────────
     async function fetchAutocomplete(q) {
-        if (!q) { closeAutocomplete(); return; }
+        if (!q || q.length < 2) { closeAutocomplete(); return; }
         try {
             const res = await fetch(`${API_COMPLETE}?q=${encodeURIComponent(q)}`);
             const data = await res.json();
@@ -236,8 +309,14 @@
         if (filters.location) params.set("location", filters.location);
         if (filters.sub_location) params.set("sub_location", filters.sub_location);
         if (filters.category) params.set("category", filters.category);
+        if (filters.date_range) params.set("date_range", filters.date_range);
         params.set("sort", filters.sort);
         params.set("page", filters.page);
+
+        // URL State Sync
+        const url = new URL(window.location);
+        url.search = params.toString();
+        history.replaceState(null, '', url);
 
         try {
             const res = await fetch(`${API_SEARCH}?${params.toString()}`);
@@ -255,6 +334,14 @@
         resultCounter.textContent = `Tìm thấy ${data.total} kết quả`;
         resultCounter.classList.add("counter-pulse");
         setTimeout(() => resultCounter.classList.remove("counter-pulse"), 350);
+
+        // Update counts on filter chips
+        if (data.counts) {
+            const lostChip = document.querySelector(".type-chip[data-value='Lost']");
+            const foundChip = document.querySelector(".type-chip[data-value='Found']");
+            if (lostChip) lostChip.innerHTML = `<i class="fas fa-exclamation-circle text-xs"></i> Mất đồ (${data.counts.lost})`;
+            if (foundChip) foundChip.innerHTML = `<i class="fas fa-check-circle text-xs"></i> Nhặt được (${data.counts.found})`;
+        }
 
         // Cards
         if (!data.items.length) {
@@ -415,6 +502,11 @@
         if (filters.location) tags.push({ label: filters.location, key: "location" });
         if (filters.sub_location) tags.push({ label: filters.sub_location, key: "sub_location" });
         if (filters.category) tags.push({ label: filters.category, key: "category" });
+        
+        if (filters.date_range) {
+            const labels = { "today": "Hôm nay", "3days": "3 ngày qua", "7days": "1 tuần qua", "30days": "1 tháng qua" };
+            tags.push({ label: labels[filters.date_range] || filters.date_range, key: "date_range" });
+        }
 
         // Badge count
         const count = tags.length;
@@ -454,6 +546,7 @@
         if (key === "location") { locSelect.value = ""; subLocSelect.classList.add("hidden"); filters.sub_location = ""; }
         if (key === "sub_location") { subLocSelect.value = ""; }
         if (key === "category") { catSelect.value = ""; }
+        if (key === "date_range") { dateRangeSelect.value = ""; }
         if (key === "type") {
             document.querySelectorAll(".type-chip").forEach((c, i) => {
                 c.className = "filter-chip " + (i === 0 ? "active-generic" : "inactive");
@@ -471,15 +564,17 @@
 
     // Expose globally so empty-state button can call it
     window.resetAllFilters = function () {
-        filters = { q: "", type: "", status: "", location: "", sub_location: "", category: "", sort: "newest", page: 1 };
+        filters = { q: "", type: "", status: "", location: "", sub_location: "", category: "", date_range: "", sort: "newest", page: 1 };
         searchInput.value = "";
         clearBtn.classList.add("hidden");
         clearBtn.classList.remove("flex");
+        document.getElementById("sort-relevance").classList.add("hidden");
         sortSelect.value = "newest";
         locSelect.value = "";
         subLocSelect.value = "";
         subLocSelect.classList.add("hidden");
         catSelect.value = "";
+        dateRangeSelect.value = "";
         // Reset chips
         document.querySelectorAll(".type-chip").forEach((c, i) => {
             c.className = "filter-chip " + (i === 0 ? "active-generic" : "inactive");
@@ -499,11 +594,19 @@
             locationsData.forEach(loc => {
                 locSelect.innerHTML += `<option value="${esc(loc.name)}">${esc(loc.name)}</option>`;
             });
+            // If location was pre-filled from URL, we must set the select value and populate sub-locations
+            if (filters.location) {
+                locSelect.value = filters.location;
+                populateSubLocations(filters.location);
+                if (filters.sub_location) {
+                    subLocSelect.value = filters.sub_location;
+                }
+            }
         } catch (e) { console.error("Load locations error:", e); }
     }
 
     function populateSubLocations(locationName) {
-        subLocSelect.innerHTML = `<option value="">Tất cả phòng / tầng</option>`;
+        subLocSelect.innerHTML = `<option value="">Tất cả địa điểm cụ thể</option>`;
         if (!locationName) { subLocSelect.classList.add("hidden"); return; }
 
         const loc = locationsData.find(l => l.name === locationName);
