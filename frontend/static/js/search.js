@@ -53,8 +53,10 @@
 
     // ─── Event binding ────────────────────────────────────
     function bindEvents() {
-        // Search input – debounced autocomplete
+        let currentFocus = -1;
+        
         searchInput.addEventListener("input", () => {
+            currentFocus = -1;
             const val = searchInput.value.trim();
             clearBtn.classList.toggle("hidden", val.length === 0);
             clearBtn.classList.toggle("flex", val.length > 0);
@@ -63,9 +65,38 @@
         });
 
         searchInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") { e.preventDefault(); submitSearch(); }
-            if (e.key === "Escape") { closeAutocomplete(); }
+            const items = acDropdown.querySelectorAll(".ac-item, .ac-item-card");
+            if (e.key === "Enter") { 
+                e.preventDefault(); 
+                if (currentFocus > -1 && items.length > 0) {
+                    items[currentFocus].click();
+                } else {
+                    submitSearch(); 
+                }
+            } else if (e.key === "Escape") { 
+                closeAutocomplete(); 
+            } else if (e.key === "ArrowDown") {
+                if (!items.length) return;
+                e.preventDefault();
+                currentFocus++;
+                if (currentFocus >= items.length) currentFocus = 0;
+                setActiveItem(items);
+            } else if (e.key === "ArrowUp") {
+                if (!items.length) return;
+                e.preventDefault();
+                currentFocus--;
+                if (currentFocus < 0) currentFocus = items.length - 1;
+                setActiveItem(items);
+            }
         });
+
+        function setActiveItem(items) {
+            items.forEach(x => x.classList.remove("bg-gray-100", "outline-none", "ring-2", "ring-orange-200"));
+            if (currentFocus > -1) {
+                items[currentFocus].classList.add("bg-gray-100", "outline-none", "ring-2", "ring-orange-200");
+                items[currentFocus].scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+        }
 
         clearBtn.addEventListener("click", () => {
             searchInput.value = "";
@@ -255,6 +286,14 @@
         resultCounter.textContent = `Tìm thấy ${data.total} kết quả`;
         resultCounter.classList.add("counter-pulse");
         setTimeout(() => resultCounter.classList.remove("counter-pulse"), 350);
+
+        // Update live tab counts
+        if (data.counts) {
+            const lostChip = document.querySelector('.type-chip[data-value="Lost"]');
+            const foundChip = document.querySelector('.type-chip[data-value="Found"]');
+            if (lostChip) lostChip.innerHTML = `<i class="fas fa-exclamation-circle text-xs"></i> Mất đồ (${data.counts.lost})`;
+            if (foundChip) foundChip.innerHTML = `<i class="fas fa-check-circle text-xs"></i> Nhặt được (${data.counts.found})`;
+        }
 
         // Cards
         if (!data.items.length) {
@@ -505,7 +544,7 @@
     }
 
     function populateSubLocations(locationName) {
-        subLocSelect.innerHTML = `<option value="">Tất cả phòng / tầng</option>`;
+        subLocSelect.innerHTML = `<option value="">Tất cả các khu vực</option>`;
         if (!locationName) { subLocSelect.classList.add("hidden"); return; }
 
         const loc = locationsData.find(l => l.name === locationName);
