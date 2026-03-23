@@ -34,6 +34,7 @@ def api_search():
     location = request.args.get('location', '').strip()
     sub_location = request.args.get('sub_location', '').strip()
     category = request.args.get('category', '').strip()
+    date_range = request.args.get('date_range', '').strip()
     sort = request.args.get('sort', 'newest').strip()
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 12, type=int)
@@ -49,6 +50,7 @@ def api_search():
         location=location,
         specific_location=sub_location,
         category=category,
+        date_range=date_range,
         sort=sort,
         page=page,
         per_page=per_page,
