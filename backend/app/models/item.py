@@ -40,6 +40,7 @@ class Item(db.Model):
             'incident_date': self.incident_date.isoformat() if self.incident_date else None,
             'images': [img.image_url for img in self.images_list],
             'user': self.user.username,
+            'user_avatar': self.user.avatar, # Use the avatar property for fallback
             'user_id': self.user_id,
             'status': self.status
         }

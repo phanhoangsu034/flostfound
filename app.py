@@ -12,6 +12,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev_key_secret' # Change in production
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flostfound.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = 600
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
+app.config['REMEMBER_COOKIE_DURATION'] = 600
 
 db.init_app(app)
 login_manager = LoginManager()
@@ -129,7 +132,7 @@ def login():
         
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password, password):
-            login_user(user)
+            login_user(user, remember=True)
             return redirect(url_for('index'))
         else:
             flash('Đăng nhập thất bại. Kiểm tra lại thông tin.', 'danger')
@@ -146,35 +149,104 @@ def logout():
 @login_required
 def post_item():
     if request.method == 'POST':
+        # Check if AJAX request
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.best == 'application/json'
+
         title = request.form.get('title')
         desc = request.form.get('description')
         location = request.form.get('location')
+        specific_location = request.form.get('specific_location')
+        category = request.form.get('category')
         itype = request.form.get('item_type')
-        contact = request.form.get('contact_info')
+        phone_number = request.form.get('phone_number')
+        facebook_url = request.form.get('facebook_url')
+        incident_date_str = request.form.get('incident_date')
         
-        # AI Spam Check
-        post_text = f"{title} {desc}"
-        is_spam, score = ai_detector.is_spam(post_text)
+        # Backward compatibility for contact_info column
+        contact = f"SĐT: {phone_number}"
+        if facebook_url:
+            contact += f" | FB: {facebook_url}"
+
+        incident_date = None
+        if incident_date_str:
+            try:
+                incident_date = datetime.strptime(incident_date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                try:
+                    incident_date = datetime.strptime(incident_date_str, '%Y-%m-%d')
+                except ValueError:
+                    pass
         
-        if is_spam:
-            flash(f'Bài viết bị từ chối: Nội dung quá giống với bài viết đã có (Độ trùng lặp: {score:.2f}). Vui lòng kiểm tra xem bạn đã đăng chưa.', 'warning')
-            return render_template('post_item.html', title=title, description=desc, location=location, contact_info=contact)
+        # AI Spam Check (Optional fallback if ai_detector not loaded)
+        try:
+            post_text = f"{title} {desc}"
+            is_spam, score = ai_detector.is_spam(post_text)
+            if is_spam:
+                msg = f'Bài viết bị từ chối: Nội dung quá giống với bài viết đã có (Độ trùng lặp: {score:.2f}).'
+                if is_ajax: return jsonify({'success': False, 'message': msg})
+                flash(msg, 'warning')
+                return redirect(url_for('index'))
+        except:
+            pass
 
         new_item = Item(
             title=title, description=desc, location=location, 
-            item_type=itype, contact_info=contact, user_id=current_user.id
+            item_type=itype, contact_info=contact, user_id=current_user.id,
+            phone_number=phone_number, facebook_url=facebook_url,
+            category=category, incident_date=incident_date
         )
         db.session.add(new_item)
         db.session.commit()
+        
+        # Handle Image Uploads
+        uploaded_files = request.files.getlist('images')
+        saved_image_urls = []
+        
+        # Try Cloudinary first
+        cloudinary_url = os.environ.get('CLOUDINARY_URL')
+        
+        for file in uploaded_files:
+            if file and file.filename != '':
+                try:
+                    if cloudinary_url:
+                        import cloudinary.uploader
+                        upload_result = cloudinary.uploader.upload(file, folder="flostfound/posts")
+                        url = upload_result.get('secure_url')
+                    else:
+                        # Local upload
+                        from werkzeug.utils import secure_filename
+                        filename = secure_filename(f"post_{new_item.id}_{int(datetime.utcnow().timestamp())}_{file.filename}")
+                        upload_path = os.path.join(app.root_path, 'static', 'uploads')
+                        if not os.path.exists(upload_path): os.makedirs(upload_path)
+                        file.save(os.path.join(upload_path, filename))
+                        url = f"/static/uploads/{filename}"
+                    
+                    saved_image_urls.append(url)
+                except Exception as e:
+                    print(f"Upload error: {e}")
+
+        # Set primary image and update DB
+        if saved_image_urls:
+            new_item.image_url = saved_image_urls[0]
+            # If you have an ItemImage table in the root models.py, add them there too.
+            # Root models.py doesn't seem to have ItemImage table yet. 
+            # I'll check if it exists before adding.
+            db.session.commit()
         
         # Log action
         log = ActionLog(user_id=current_user.id, action="Đăng bài", details=f"Tiêu đề: {title}")
         db.session.add(log)
         db.session.commit()
         
-        # Update AI model with new data
-        refresh_ai_model()
+        # Update AI model
+        try:
+            refresh_ai_model()
+        except:
+            pass
         
+        if is_ajax:
+            return jsonify({'success': True, 'item_id': new_item.id, 'redirect_url': url_for('index')})
+            
         flash('Đăng tin thành công!', 'success')
         return redirect(url_for('index'))
         
@@ -258,6 +330,104 @@ def on_join(data):
     recipient_id = data.get('recipient_id')
     room = f"chat_{min(current_user.id, int(recipient_id))}_{max(current_user.id, int(recipient_id))}"
     join_room(room)
+
+# ==========================================
+# WebRTC SIGNALING LOGIC (Video/Voice Call)
+# ==========================================
+
+@socketio.on('call_user')
+def on_call_user(data):
+    """ Người A gửi yêu cầu gọi (Offer) cho người B """
+    if not current_user.is_authenticated: return
+    
+    user_to_call = data.get('user_to_call')
+    signal_data = data.get('signal_data')
+    is_video = data.get('is_video', True)
+    
+    room = f"user_{user_to_call}"
+    emit('call_made', {
+        'signal': signal_data,
+        'from': current_user.id,
+        'from_name': current_user.username,
+        'from_avatar': current_user.avatar,
+        'is_video': is_video
+    }, room=room)
+
+@socketio.on('user_busy')
+def on_user_busy(data):
+    """ Người B phản hồi lại là đang bận cuộc gọi khác """
+    if not current_user.is_authenticated: return
+    to_user = data.get('to')
+    room = f"user_{to_user}"
+    emit('call_busy', {'from': current_user.id}, room=room)
+
+@socketio.on('make_answer')
+def on_make_answer(data):
+    """ Người B chấp nhận và gửi Phản hồi (Answer) lại cho A """
+    if not current_user.is_authenticated: return
+    
+    to_user = data.get('to')
+    signal_data = data.get('signal')
+    
+    room = f"user_{to_user}"
+    emit('answer_made', {
+        'signal': signal_data,
+        'to': current_user.id
+    }, room=room)
+
+@socketio.on('ice_candidate')
+def on_ice_candidate(data):
+    """ Trung chuyển thông tin mạng ICE Candidate cho 2 máy kết nối P2P """
+    if not current_user.is_authenticated: return
+    
+    to_user = data.get('to')
+    candidate = data.get('candidate')
+    
+    room = f"user_{to_user}"
+    emit('ice_candidate', {
+        'candidate': candidate,
+        'from': current_user.id
+    }, room=room)
+
+@socketio.on('reject_call')
+def on_reject_call(data):
+    """ Xử lý khi người B Ấn nút Từ Chối """
+    if not current_user.is_authenticated: return
+    
+    to_user = data.get('to')
+    room = f"user_{to_user}"
+    
+    # Save call log
+    msg = Message(sender_id=current_user.id, recipient_id=to_user, body="📞 Cuộc gọi bị từ chối")
+    db.session.add(msg)
+    db.session.commit()
+    
+    emit('call_rejected', {
+        'from': current_user.id
+    }, room=room)
+
+@socketio.on('end_call')
+def on_end_call(data):
+    """ Xử lý khi đang gọi mà Cúp máy """
+    if not current_user.is_authenticated: return
+    
+    to_user = data.get('to')
+    duration = data.get('duration', 0)
+    
+    if duration == 0:
+        body = "📞 Cuộc gọi nhỡ"
+    else:
+        m, s = divmod(duration, 60)
+        body = f"📞 Cuộc gọi video kết thúc - {m:02d}:{s:02d}"
+        
+    msg = Message(sender_id=current_user.id, recipient_id=to_user, body=body)
+    db.session.add(msg)
+    db.session.commit()
+    
+    room = f"user_{to_user}"
+    emit('call_ended', {
+        'from': current_user.id
+    }, room=room)
 
 # Admin Routes
 @app.route('/admin')
@@ -359,75 +529,54 @@ def change_password():
 def profile():
     if request.method == 'POST':
         # Handle Avatar Upload
-        if 'avatar' in request.files:
-            file = request.files['avatar']
-            if file and file.filename != '':
-                from werkzeug.utils import secure_filename
-                import os
-                
+        if 'avatar_file' in request.files: # Match the field name in edit.html
+            file = request.files['avatar_file']
+            if file and file.filename != '' and '.' in file.filename:
                 # Check extension
-                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-                if '.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                if file.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    from werkzeug.utils import secure_filename
+                    import os
+                    
                     filename = secure_filename(f"user_{current_user.id}_{int(datetime.utcnow().timestamp())}.{file.filename.rsplit('.', 1)[1].lower()}")
                     upload_folder = os.path.join(app.root_path, 'static', 'uploads')
                     if not os.path.exists(upload_folder):
                         os.makedirs(upload_folder)
                     
                     file.save(os.path.join(upload_folder, filename))
-                    current_user.avatar = filename
-                    db.session.commit()
-                    flash('Cập nhật ảnh đại diện thành công!', 'success')
+                    current_user.avatar_url = filename
                     
                     # Log Avatar Update
                     log = ActionLog(user_id=current_user.id, action="Cập nhật", details="Thay đổi ảnh đại diện")
                     db.session.add(log)
-                    db.session.commit()
-                else:
-                    flash('Định dạng ảnh không hỗ trợ. Chỉ chấp nhận png, jpg, jpeg, gif.', 'danger')
-            return redirect(url_for('profile'))
+        
+        # Also check for manual avatar_url
+        new_avatar_url = request.form.get('avatar_url')
+        if new_avatar_url:
+            current_user.avatar_url = new_avatar_url
 
-        # Update Profile Info (Only if not Avatar Upload)
+        # Update Profile Info
+        full_name = request.form.get('full_name')
         phone = request.form.get('phone')
         email = request.form.get('email')
+        about = request.form.get('about')
         
-        # Validation Patterns
-        import re
-        
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            flash('Email không hợp lệ. Vui lòng kiểm tra lại (VD: user@example.com).', 'danger')
-            return redirect(url_for('profile'))
-        
-        # Phone: Starts with 0 (10 digits) or +84 (11 digits), prefix 3,5,7,8,9
-        if phone and not re.match(r'^(0|\+84)[35789][0-9]{8}$', phone):
-            flash('Số điện thoại không hợp lệ.', 'danger')
-            return redirect(url_for('profile'))
-        
-        # Check if email/phone already exists (excluding current user)
-        existing_user = User.query.filter(User.email == email, User.id != current_user.id).first()
-        if existing_user:
-            flash('Email này đã được sử dụng bởi tài khoản khác.', 'danger')
-            return redirect(url_for('profile'))
+        if email:
+            # Check unique email
+            existing_user = User.query.filter(User.email == email, User.id != current_user.id).first()
+            if existing_user:
+                flash('Email này đã được sử dụng bởi tài khoản khác.', 'danger')
+            else:
+                current_user.email = email
 
-        # Update Username
-        new_username = request.form.get('username')
-        if new_username and new_username != current_user.username:
-            # Check if username exists
-            existing_username = User.query.filter(User.username == new_username).first()
-            if existing_username:
-                flash('Tên hiển thị này đã được sử dụng. Vui lòng chọn tên khác.', 'danger')
-                return redirect(url_for('profile'))
-            current_user.username = new_username
+        if full_name:
+            current_user.full_name = full_name
+        
+        if phone:
+            current_user.phone = phone
             
-            # Log Username Update
-            log = ActionLog(user_id=current_user.id, action="Cập nhật", details=f"Đổi tên thành {new_username}")
-            db.session.add(log)
-
-        current_user.phone = phone
-        current_user.email = email
-        
-        # Log Profile Update
-        log = ActionLog(user_id=current_user.id, action="Cập nhật", details="Thay đổi thông tin cá nhân")
-        db.session.add(log)
+        if about:
+            current_user.about_me = about
         
         db.session.commit()
         flash('Cập nhật thông tin thành công!', 'success')

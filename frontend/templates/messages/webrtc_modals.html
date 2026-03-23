@@ -71,11 +71,12 @@
     </div>
 
     <!-- Remote Video -->
-    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-cover z-10 relative"></video>
+    <!-- Remote Video -->
+    <video id="remoteVideo" autoplay playsinline class="w-full h-full object-contain z-0 relative bg-black"></video>
 
     <!-- Local Video -->
     <div id="localVideoContainer"
-        class="absolute top-4 right-4 w-32 h-44 bg-gray-800 rounded-xl overflow-hidden border-2 border-orange-500 shadow-2xl z-10 transition-transform bg-cover bg-center"
+        class="absolute top-4 right-4 w-32 h-44 bg-gray-800 rounded-xl overflow-hidden border-2 border-orange-500 shadow-2xl z-50 transition-transform bg-cover bg-center"
         style="background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/static/team_photo.png');">
         <div class="local-blur absolute inset-0 backdrop-blur-sm hidden"></div>
         <video id="localVideo" autoplay playsinline muted class="w-full h-full object-cover scale-x-[-1]"></video>
@@ -207,11 +208,11 @@
     async function globalInitMedia(wantsVideo = true) {
         try {
             // Messenger style: Always try to get both from the start
-            let constraints = { 
-                audio: true, 
+            let constraints = {
+                audio: true,
                 video: { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" }
             };
-            
+
             // Stop old tracks if switching cameras or re-initializing
             if (globalCallState.localStream) {
                 globalCallState.localStream.getTracks().forEach(track => track.stop());
@@ -226,7 +227,7 @@
 
             if (hasVideoHardware) {
                 localVideo.srcObject = stream;
-                
+
                 // Logic Messenger: Nếu CHỈ MUỐN gọi thoại -> Xin cam xong rồi tắt liền (nhưng vẫn giữ track)
                 if (wantsVideo) {
                     globalCallState.isCamOff = false;
@@ -314,6 +315,14 @@
 
             // initial check
             checkRemoteVideoVisibility();
+
+            remoteVideo.onclick = () => {
+                if (remoteVideo.classList.contains('object-contain')) {
+                    remoteVideo.classList.replace('object-contain', 'object-cover');
+                } else {
+                    remoteVideo.classList.replace('object-cover', 'object-contain');
+                }
+            };
 
             // Listen for remote track changes (Mute/Unmute/Ended)
             stream.getVideoTracks().forEach(track => {
@@ -651,7 +660,7 @@
             if (videoTrack) {
                 globalCallState.isCamOff = !globalCallState.isCamOff;
                 videoTrack.enabled = !globalCallState.isCamOff; // Messenger style: Chỉ bật/tắt track, ko ngắt stream
-                
+
                 const btn = document.getElementById('toggleWebRtcCamBtn');
                 btn.innerHTML = globalCallState.isCamOff ? '<i class="fas fa-video-slash text-xl text-red-500"></i>' : '<i class="fas fa-video text-xl"></i>';
 
@@ -699,15 +708,58 @@
             return;
         }
 
-        globalCallState.isFacingModeUser = !globalCallState.isFacingModeUser;
         const btn = document.getElementById('switchCamBtn');
         btn.classList.add('animate-spin');
 
-        const success = await globalInitMedia(true);
+        // Lấy mode cũ để đảo
+        globalCallState.isFacingModeUser = !globalCallState.isFacingModeUser;
+        
+        try {
+            const constraints = { 
+                audio: true, 
+                video: { facingMode: globalCallState.isFacingModeUser ? "user" : "environment" }
+            };
 
-        btn.classList.remove('animate-spin');
-        if (success) {
+            const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+            const newVideoTrack = newStream.getVideoTracks()[0];
+            const newAudioTrack = newStream.getAudioTracks()[0];
+
+            if (globalCallState.peerConnection) {
+                const senders = globalCallState.peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+
+                if (videoSender && newVideoTrack) {
+                    await videoSender.replaceTrack(newVideoTrack);
+                }
+                if (audioSender && newAudioTrack) {
+                    await audioSender.replaceTrack(newAudioTrack);
+                }
+            }
+
+            // Dừng stream cũ
+            if (globalCallState.localStream) {
+                globalCallState.localStream.getTracks().forEach(track => track.stop());
+            }
+
+            globalCallState.localStream = newStream;
+            localVideo.srcObject = newStream;
+            
+            // Xử lý mirroring: Thường camera trước (user) nên mirror, camera sau (environment) thì không
+            if (globalCallState.isFacingModeUser) {
+                localVideo.classList.add('scale-x-[-1]');
+            } else {
+                localVideo.classList.remove('scale-x-[-1]');
+            }
+
             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `Đang dùng Camera ${globalCallState.isFacingModeUser ? 'Trước' : 'Sau'}`, showConfirmButton: false, timer: 2000 });
+        } catch (err) {
+            console.error("Lỗi chuyển đổi camera:", err);
+            // Revert flag if failed
+            globalCallState.isFacingModeUser = !globalCallState.isFacingModeUser;
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Không thể chuyển đổi camera!', showConfirmButton: false, timer: 3000 });
+        } finally {
+            btn.classList.remove('animate-spin');
         }
     });
 </script>

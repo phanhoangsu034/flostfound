@@ -126,10 +126,11 @@
                                 class="p-4 rounded-xl border-2 border-dashed border-gray-200 flex justify-between items-center bg-white hover:border-orange-200 transition">
                                 <div>
                                     <p class="text-xs text-gray-400 font-bold uppercase">Người đăng</p>
-                                    <div class="flex items-center mt-1">
-                                        <div class="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-bold mr-2"
-                                            id="detailAvatar">U</div>
-                                        <span class="font-bold text-gray-800" id="detailAuthor">--</span>
+                                        <div class="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shadow-sm flex items-center justify-center mr-3 bg-white">
+                                            <img id="detailAvatarImg" src="" alt="" class="w-full h-full object-cover hidden">
+                                            <div id="detailAvatarInit" class="w-full h-full flex items-center justify-center text-xs font-bold text-gray-600 bg-gray-100 italic">--</div>
+                                        </div>
+                                        <span class="font-bold text-gray-900 text-base" id="detailAuthor">--</span>
                                     </div>
                                 </div>
                                 <!-- Contact Info -->
@@ -215,7 +216,18 @@
         // Text Content
         document.getElementById('detailTitle').textContent = item.title;
         document.getElementById('detailAuthor').textContent = item.user;
-        document.getElementById('detailAvatar').textContent = item.user.charAt(0).toUpperCase();
+        
+        const avatarImg = document.getElementById('detailAvatarImg');
+        const avatarInit = document.getElementById('detailAvatarInit');
+        if (item.user_avatar) {
+            avatarImg.src = item.user_avatar;
+            avatarImg.classList.remove('hidden');
+            avatarInit.classList.add('hidden');
+        } else {
+            avatarImg.classList.add('hidden');
+            avatarInit.classList.remove('hidden');
+            avatarInit.textContent = item.user ? item.user.charAt(0).toUpperCase() : '?';
+        }
         document.getElementById('detailDate').textContent = new Date(item.date_posted).toLocaleDateString();
         document.getElementById('detailIncidentDate').textContent = item.incident_date ? new Date(item.incident_date).toLocaleString('vi-VN') : 'Không rõ';
         document.getElementById('detailCategory').textContent = item.category || 'Chưa phân loại';

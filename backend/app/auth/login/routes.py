@@ -44,7 +44,7 @@ def social_login():
         user = new_user
 
     # 3. Đăng nhập cho cả Acc cũ lẫn mới
-    login_user(user)
+    login_user(user, remember=True)
     return jsonify({'success': True, 'redirect': url_for('posts_view.index')})
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -55,7 +55,7 @@ def login():
         
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
-            login_user(user)
+            login_user(user, remember=True)
             return redirect(url_for('posts_view.index'))
         else:
             flash('Đăng nhập thất bại. Kiểm tra lại thông tin.', 'danger')

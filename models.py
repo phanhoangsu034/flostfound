@@ -11,8 +11,17 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(150), nullable=False)
     phone = db.Column(db.String(20), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
-    avatar = db.Column(db.String(200), nullable=True)
+    avatar_url = db.Column(db.String(300), nullable=True, default='')
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def avatar(self):
+        """Return avatar URL or initials placeholder."""
+        if self.avatar_url:
+            if not self.avatar_url.startswith('http'):
+                return f"/static/uploads/{self.avatar_url}"
+            return self.avatar_url
+        return f"https://ui-avatars.com/api/?name={self.username}&background=F27123&color=fff&size=128"
 
 class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)

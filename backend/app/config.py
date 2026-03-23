@@ -8,6 +8,9 @@ class Config:
     """Base configuration"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_key_secret'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    PERMANENT_SESSION_LIFETIME = 600 # 10 minutes session
+    SESSION_REFRESH_EACH_REQUEST = True
+    REMEMBER_COOKIE_DURATION = 600 # 10 minutes remember-me cookie
 
     # Instance directory for uploaded files, AI models, etc.
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))

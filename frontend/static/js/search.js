@@ -298,7 +298,9 @@
                 </div>
                 <div class="px-6 py-4 bg-gray-50 border-t flex justify-between items-center text-sm">
                     <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-600 font-bold border border-gray-200 shadow-sm text-xs">${initial}</div>
+                        <div class="w-8 h-8 rounded-full bg-white overflow-hidden border border-gray-200 shadow-sm flex items-center justify-center">
+                            <img src="${item.user_avatar}" alt="${esc(username)}" class="w-full h-full object-cover">
+                        </div>
                         <span class="font-medium text-gray-700 truncate max-w-[100px]">${esc(username)}</span>
                     </div>
                     <div class="flex items-center space-x-3">
