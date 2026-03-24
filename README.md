@@ -67,7 +67,7 @@ pip install -r requirements.txt
 3. Điền `SECRET_KEY` (có thể là một chuỗi ký tự ngẫu nhiên bất kỳ để bảo mật session).
 4. **Đặc biệt lưu ý:** Bổ sung biến môi trường Cloudinary. Tính năng đăng ảnh bài viết bắt buộc phải có thông số này. (Đăng ký tài khoản miễn phí tại trang chủ Cloudinary để lấy key api):
 ```ini
-CLOUDINARY_URL=cloudinary://943732253697764:kifj9uG7v0mydXq_zJV3H_B_Je4@dbpqjnu0o
+CLOUDINARY_URL=cloudinary://<YOUR_API_KEY>:<YOUR_API_SECRET>@<YOUR_CLOUD_NAME>
 ```
 
 ## 🗄️ 3. Khởi tạo Cơ sở dữ liệu (Database)
