@@ -6,7 +6,7 @@ import os
 
 class Config:
     """Base configuration"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev_key_secret'
+    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME = 600 # 10 minutes session
     SESSION_REFRESH_EACH_REQUEST = True

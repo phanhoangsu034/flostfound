@@ -81,6 +81,15 @@ def post_item():
             for file in uploaded_files:
                 if file and allowed_file(file.filename):
                     try:
+                        file.seek(0, 2)
+                        sizeBytes = file.tell()
+                        file.seek(0)
+                        
+                        if sizeBytes > 5 * 1024 * 1024:
+                            err_msg = f"Hình ảnh {file.filename} vượt quá dung lượng 5MB cho phép."
+                            upload_errors.append(err_msg)
+                            continue
+
                         import cloudinary
                         import cloudinary.uploader
                         # Upload directly to Cloudinary
