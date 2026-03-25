@@ -22,7 +22,12 @@ class User(UserMixin, db.Model):
 
     # System fields
     is_admin = db.Column(db.Boolean, default=False)
+    level = db.Column(db.Integer, default=3) # 1: Super Admin, 2: Moderator, 3: User
+    is_banned = db.Column(db.Boolean, default=False)
+    ban_until = db.Column(db.DateTime, nullable=True) # If null and is_banned=True, then permanent
+    trust_score = db.Column(db.Integer, default=100) # 0-100 scale
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # --- Password helpers ---
     def set_password(self, password):

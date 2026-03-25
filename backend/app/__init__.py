@@ -44,6 +44,45 @@ def create_app(config_name=None):
     # so all models (User, Item, etc.) are already imported
     with app.app_context():
         db.create_all()
+        # FIX: Force add missing columns to User and Item tables
+        from sqlalchemy import text
+        # Individual column migrations
+        migrations = [
+            "ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0",
+            "ALTER TABLE user ADD COLUMN level INTEGER DEFAULT 3",
+            "ALTER TABLE user ADD COLUMN is_banned BOOLEAN DEFAULT 0",
+            "ALTER TABLE user ADD COLUMN ban_until DATETIME",
+            "ALTER TABLE user ADD COLUMN trust_score INTEGER DEFAULT 100",
+            "ALTER TABLE user ADD COLUMN last_seen DATETIME",
+            "ALTER TABLE user ADD COLUMN created_at DATETIME",
+            "ALTER TABLE item ADD COLUMN status VARCHAR(20) DEFAULT 'Open'"
+        ]
+        
+        for statement in migrations:
+            try:
+                db.session.execute(text(statement))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            # print("Columns already exist, migration skipped.")
+
+        # FORCE ADMIN
+        from app.models.user import User
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            admin = User(username='admin', email='admin@fpt.edu.vn')
+            admin.set_password('123456')
+            admin.is_admin = True
+            admin.level = 1
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin account created (backend).")
+        else:
+            admin.is_admin = True
+            admin.level = 1
+            admin.set_password('123456')
+            db.session.commit()
+            print("Admin account updated (backend).")
     
     return app
 

@@ -9,8 +9,8 @@ def admin_required(f):
     """Decorator to require admin privileges"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            flash('Bạn không có quyền truy cập trang này.', 'danger')
+        if not current_user.is_authenticated or getattr(current_user, 'level', 3) > 2:
+            flash('Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên.', 'danger')
             return redirect(url_for('posts_view.index'))
         return f(*args, **kwargs)
     return decorated_function

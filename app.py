@@ -38,7 +38,7 @@ from functools import wraps
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
+        if not current_user.is_authenticated or (current_user.level > 2 and not current_user.is_admin):
             flash('Bạn không có quyền truy cập trang này.', 'danger')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
@@ -115,7 +115,8 @@ def register():
             flash('Tên đăng nhập đã tồn tại.', 'danger')
             return redirect(url_for('register'))
             
-        new_user = User(username=username, email=email, password=generate_password_hash(password, method='scrypt'))
+        new_user = User(username=username, email=email, level=3)
+        new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
         
@@ -491,7 +492,94 @@ def admin_posts():
     items = Item.query.order_by(Item.date_posted.desc()).all()
     return render_template('admin_posts.html', items=items)
 
-# ... existing admin routes ...
+@app.route('/admin/users')
+@login_required
+@admin_required
+def admin_users():
+    search_query = request.args.get('q', '')
+    role_filter = request.args.get('role', '')
+    
+    query = User.query
+    if search_query:
+        query = query.filter((User.username.contains(search_query)) | (User.email.contains(search_query)))
+    
+    if role_filter == 'admin':
+        query = query.filter(User.level <= 2)
+    elif role_filter == 'banned':
+        query = query.filter(User.is_banned == True)
+        
+    users = query.order_by(User.level.asc(), User.username.asc()).all()
+    return render_template('admin/users.html', users=users, search_query=search_query, role_filter=role_filter, now=datetime.utcnow())
+
+@app.route('/admin/users/promote/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def promote_user(user_id):
+    if current_user.level != 1:
+        flash('Chỉ Admin Cấp 1 mới có quyền thăng cấp.', 'danger')
+        return redirect(url_for('admin_users'))
+    
+    user = User.query.get_or_404(user_id)
+    if user.level > 2:
+        user.level = 2
+        user.is_admin = True
+        db.session.commit()
+        flash(f'Đã thăng cấp {user.username} lên Moderator (Cấp 2).', 'success')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/ban/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def ban_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Permission check: Level 1 can ban any level > 1. Level 2 can only ban level 3.
+    if current_user.level >= user.level:
+        flash('Bạn không có quyền ban người cùng cấp hoặc cấp cao hơn.', 'danger')
+        return redirect(url_for('admin_users'))
+    
+    duration = request.form.get('duration')
+    user.is_banned = True
+    if duration == 'permanent':
+        user.ban_until = None
+    else:
+        from datetime import timedelta
+        days = int(duration) if duration.isdigit() else 1
+        user.ban_until = datetime.utcnow() + timedelta(days=days)
+    
+    db.session.commit()
+    flash(f'Đã ban người dùng {user.username}.', 'success')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/unban/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def unban_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if current_user.level >= user.level and user.level != 3:
+        # Super admin can unban moderators, but moderator cannot unban super admin (won't happen as they can't be banned)
+        pass 
+
+    user.is_banned = False
+    user.ban_until = None
+    db.session.commit()
+    flash(f'Đã bỏ ban người dùng {user.username}.', 'success')
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def force_delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    if current_user.level >= user.level:
+        flash('Bạn không có quyền xóa người cùng cấp hoặc cấp cao hơn.', 'danger')
+        return redirect(url_for('admin_users'))
+    
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'Đã xóa tài khoản {user.username}.', 'success')
+    return redirect(url_for('admin_users'))
 
 # Static Pages
 @app.route('/about')
@@ -595,8 +683,16 @@ def profile():
 def delete_post(item_id):
     item = Item.query.get_or_404(item_id)
     
-    # Check permission: Admin or Owner
-    if not current_user.is_admin and current_user.id != item.user_id:
+    # Check permission: Super Admin (1), Moderator (2) or Owner
+    is_authorized = (current_user.id == item.user_id)
+    if current_user.level == 1:
+        is_authorized = True
+    elif current_user.level == 2:
+        # Moderator can delete posts of Level 3 users or their own
+        if item.user.level > 2 or item.user_id == current_user.id:
+            is_authorized = True
+            
+    if not is_authorized:
         flash('Bạn không có quyền xóa bài này.', 'danger')
         return redirect(url_for('index'))
         
@@ -630,5 +726,36 @@ def my_posts():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        # FIX: Force add missing columns
+        from sqlalchemy import text
+        try:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN level INTEGER DEFAULT 3"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN is_banned BOOLEAN DEFAULT 0"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN ban_until DATETIME"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN trust_score INTEGER DEFAULT 100"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN last_seen DATETIME"))
+            db.session.execute(text("ALTER TABLE item ADD COLUMN status VARCHAR(20) DEFAULT 'Open'"))
+            db.session.commit()
+            print("Successfully migrated columns in root DB!")
+        except Exception:
+            db.session.rollback()
+
+        # FORCE ADMIN
+        admin = User.query.filter_by(username='admin').first()
+        if not admin:
+            print("Creating default admin account...")
+            admin = User(username='admin', email='admin@fpt.edu.vn', is_admin=True, level=1)
+            admin.set_password('123456')
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin account created (root).")
+        else:
+            admin.is_admin = True
+            admin.level = 1
+            admin.set_password('123456')
+            db.session.commit()
+            print("Admin account updated (root).")
+
         refresh_ai_model()
     socketio.run(app, debug=True, use_reloader=True, log_output=True)
