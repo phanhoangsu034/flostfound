@@ -1,12 +1,12 @@
 
 Tạo DB : 
-	CÂU LỆNH : docker run --name F-LostFound -p 3308:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=FLostFound -e MYSQL_USER=admin -e MYSQL_PASSWORD=Abc@123 -d mysql:8.0.20
+	CÂU LỆNH : docker run --name F-LostFound -p 3308:3306 -e MYSQL_ROOT_PASSWORD=<ROOT_PASS> -e MYSQL_DATABASE=FLostFound -e MYSQL_USER=admin -e MYSQL_PASSWORD=<USER_PASS> -d mysql:8.0.20
 
 	Trường dữ liệu,Giá trị
 Host,127.0.0.1 hoặc localhost
 Port,3308
 User (Root),root
-Password (Root),root
+Password (Root),<NHẬP_MẬT_KHẨU_TẠI_ĐÂY>
 User (Thường),admin
-Password (Thường),Abc@123
+Password (Thường),<NHẬP_MẬT_KHẨU_TẠI_ĐÂY>
 Database name,F-LostFound
