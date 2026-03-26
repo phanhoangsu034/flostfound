@@ -18,42 +18,36 @@
                 <h3 class="font-bold text-red-500 flex items-center gap-2">
                     <i class="fas fa-search-location"></i> Tìm Đồ
                 </h3>
-                <span class="bg-red-50 text-red-500 text-xs font-bold px-3 py-1 rounded-full">{{ lost_items|length
-                    }}</span>
+                <span class="bg-red-50 text-red-500 text-xs font-bold px-3 py-1 rounded-full">{{ lost_items|length }}</span>
             </div>
             <div class="space-y-3">
                 {% for item in lost_items %}
-                <div onclick="window.location.href='{{ url_for('posts_view.index') }}?new_post_id={{ item.id }}'"
-                    class="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                <div class="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md transition-all">
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="font-semibold text-gray-800 group-hover:text-orange-600 transition text-sm">{{
-                                item.title }}</p>
+                            <p class="font-semibold text-gray-800 group-hover:text-orange-600 transition text-sm">{{ item.title }}</p>
                             <p class="text-xs text-gray-400 mt-1">
                                 <i class="fas fa-map-marker-alt mr-1"></i>{{ item.location or '—' }}
                                 &nbsp;·&nbsp;{{ item.date_posted.strftime('%d/%m/%Y') }}
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="{{ url_for('posts_update.edit_item', item_id=item.id) }}" title="Sửa"
-                                class="text-gray-300 hover:text-blue-500 transition p-1"
-                                onclick="event.stopPropagation();">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <button class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg" 
-                                    title="Xoá"
-                                    onclick='confirmDelete(event, {{ item.id }}, {{ item.title|tojson|safe }})'>
-                                <i class="fas fa-trash-alt"></i>
+                            {% if item.status == 'Open' %}
+                            <button onclick="toggleStatus({{ item.id }}, 'Closed')" class="text-[10px] font-bold bg-green-50 text-green-600 hover:bg-green-600 hover:text-white px-2 py-1 rounded-lg border border-green-200 transition">
+                                <i class="fas fa-check"></i> Xong
                             </button>
-
+                            {% else %}
+                            <span class="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-1 rounded-lg border border-gray-200">
+                                Hoàn tất
+                            </span>
+                            {% endif %}
+                            <a href="{{ url_for('posts_update.edit_item', item_id=item.id) }}" class="text-gray-300 hover:text-blue-500 p-1"><i class="fas fa-edit"></i></a>
+                            <button class="text-gray-300 hover:text-red-500 p-1" onclick="deletePost({{ item.id }})"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>
                 </div>
                 {% else %}
-                <div class="text-center py-10 text-gray-300">
-                    <i class="fas fa-folder-open text-4xl mb-2"></i>
-                    <p class="text-sm">Bạn chưa đăng tin tìm đồ nào.</p>
-                </div>
+                <p class="text-center py-10 text-gray-300">Không có bài đăng nào.</p>
                 {% endfor %}
             </div>
         </div>
@@ -64,41 +58,33 @@
                 <h3 class="font-bold text-green-600 flex items-center gap-2">
                     <i class="fas fa-check-circle"></i> Nhặt Được
                 </h3>
-                <span class="bg-green-50 text-green-600 text-xs font-bold px-3 py-1 rounded-full">{{ found_items|length
-                    }}</span>
+                <span class="bg-green-50 text-green-600 text-xs font-bold px-3 py-1 rounded-full">{{ found_items|length }}</span>
             </div>
             <div class="space-y-3">
                 {% for item in found_items %}
-                <div onclick="window.location.href='{{ url_for('posts_view.index') }}?new_post_id={{ item.id }}'"
-                    class="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md transition-all cursor-pointer">
+                <div class="group p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-md transition-all">
                     <div class="flex justify-between items-start">
                         <div>
-                            <p class="font-semibold text-gray-800 group-hover:text-green-600 transition text-sm">{{
-                                item.title }}</p>
+                            <p class="font-semibold text-gray-800 transition text-sm">{{ item.title }}</p>
                             <p class="text-xs text-gray-400 mt-1">
                                 <i class="fas fa-map-marker-alt mr-1"></i>{{ item.location or '—' }}
                                 &nbsp;·&nbsp;{{ item.date_posted.strftime('%d/%m/%Y') }}
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="{{ url_for('posts_update.edit_item', item_id=item.id) }}" title="Sửa"
-                                class="text-gray-300 hover:text-blue-500 transition p-1"
-                                onclick="event.stopPropagation();">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <button class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-red-50 rounded-lg" 
-                                    title="Xoá"
-                                    onclick='confirmDelete(event, {{ item.id }}, {{ item.title|tojson|safe }})'>
-                                <i class="fas fa-trash-alt"></i>
+                            {% if item.status == 'Open' %}
+                            <button onclick="toggleStatus({{ item.id }}, 'Closed')" class="text-[10px] font-bold bg-green-50 text-green-600 hover:bg-green-600 hover:text-white px-2 py-1 rounded-lg border border-green-200 transition">
+                                <i class="fas fa-check"></i> Xong
                             </button>
-
+                            {% else %}
+                            <span class="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-1 rounded-lg border border-gray-200">
+                                Hoàn tất
+                            </span>
+                            {% endif %}
+                            <a href="{{ url_for('posts_update.edit_item', item_id=item.id) }}" class="text-gray-300 hover:text-blue-500 p-1"><i class="fas fa-edit"></i></a>
+                            <button class="text-gray-300 hover:text-red-500 p-1" onclick="deletePost({{ item.id }})"><i class="fas fa-trash-alt"></i></button>
                         </div>
                     </div>
-                </div>
-                {% else %}
-                <div class="text-center py-10 text-gray-300">
-                    <i class="fas fa-folder-open text-4xl mb-2"></i>
-                    <p class="text-sm">Bạn chưa đăng tin nhặt được đồ nào.</p>
                 </div>
                 {% endfor %}
             </div>
@@ -108,69 +94,24 @@
 </div>
 
 <script>
-function confirmDelete(event, itemId, title) {
-    if (event) event.stopPropagation();
-    
-    Swal.fire({
-        title: 'Xóa bài đăng?',
-        html: `Bạn có chắc chắn muốn xóa bài <br><b>"${title}"</b>?<br><span class="text-xs text-red-500">Hành động này không thể hoàn tác.</span>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626', // red-600
-        cancelButtonColor: '#9ca3af', // gray-400
-        confirmButtonText: 'Đồng ý, xóa ngay!',
-        cancelButtonText: 'Hủy',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Show loading state
-            Swal.fire({
-                title: 'Đang xử lý...',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-
-            fetch(`/post/delete/${itemId}`, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        title: 'Đã xóa!',
-                        text: data.message,
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    
-                    // Find the card element and remove it with animation
-                    const card = event.target.closest('.group');
-                    if (card) {
-                        card.style.opacity = '0';
-                        card.style.transform = 'scale(0.95)';
-                        setTimeout(() => {
-                            card.remove();
-                            // If no more items, show empty state (optional improvement)
-                            if (document.querySelectorAll('.group').length === 0) {
-                                location.reload(); // Simplest way to show full empty state
-                            }
-                        }, 300);
-                    }
-                } else {
-                    Swal.fire('Thất bại!', data.message || 'Không thể xóa bài.', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire('Lỗi!', 'Có lỗi kết nối đến máy chủ.', 'error');
-            });
-        }
-    });
+function toggleStatus(itemId, newStatus) {
+    if(confirm('Bạn đã tìm thấy/trả lại đồ thành công?')) {
+        fetch(`/post/status/${itemId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ status: newStatus })
+        }).then(r => r.json()).then(data => {
+            if(data.success) location.reload();
+        });
+    }
+}
+function deletePost(itemId) {
+    if(confirm('Bạn có chắc chắn muốn xóa bài đăng này?')) {
+        fetch(`/post/delete/${itemId}`, { method: 'POST' })
+        .then(r => r.json()).then(data => {
+            if(data.success) location.reload();
+        });
+    }
 }
 </script>
-{% endblock %}
+{% endblock %}

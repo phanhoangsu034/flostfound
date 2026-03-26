@@ -11,6 +11,10 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 600 # 10 minutes session
     SESSION_REFRESH_EACH_REQUEST = True
     REMEMBER_COOKIE_DURATION = 600 # 10 minutes remember-me cookie
+    
+    # Admin default credentials (from .env)
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '123456')
 
     # Instance directory for uploaded files, AI models, etc.
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))

@@ -423,6 +423,44 @@ Chính sách này được thiết kế cho **doanh nghiệp có pháp nhân**, 
 
 ---
 
+### 8. Hệ Thống Quản Trị Cao Cấp (Admin Command Center) 🛡️
+
+Dự án tích hợp một trung tâm điều hành tập trung (Command Center) dành riêng cho Quản trị viên, được thiết kế với ngôn ngữ đồ họa **Glassmorphism** cao cấp, tối ưu cho việc giám sát và ra quyết định nhanh chóng.
+
+#### 📊 8.1. Intelligence Dashboard (Tổng quan Chiến lược)
+*   **Operational Intelligence (Thống kê Thời gian thực):** Hệ thống theo dõi tổng số User, lượng bài đăng Lost/Found và tỷ lệ xử lý thành công qua các thẻ Card 3D sinh động.
+*   **Temporal Trend Analysis (Biểu đồ 7 ngày):** Sử dụng biểu đồ đường (Line Chart) để đối soát lưu lượng bài đăng theo thời gian, giúp nhận diện xu hướng thất lạc đồ trong tuần.
+*   **Geographic Hotspots (Điểm nóng An ninh):** Phân tích dữ liệu vị trí để liệt kê 5 khu vực có tần suất rơi đồ cao nhất (Ví dụ: Thư viện, Nhà xe, Căn-tin), hỗ trợ công tác an ninh tại hiện trường.
+*   **System Health Monitor:** Hiển thị dung lượng Database thực tế và tình trạng kết nối máy chủ ngay tại Header của Dashboard.
+
+#### 👤 8.2. Identity Management (Hồ sơ Đối tượng - User Dossier)
+*   **Dossier System:** Danh sách người dùng được trình bày dưới dạng thẻ hồ sơ chuyên nghiệp. Mỗi người dùng có mã định danh và bộ chỉ số riêng.
+*   **Trust Score (Chỉ số Tin cậy):** Thuật toán tự động đánh giá độ tin cậy của người dùng (0-100) dựa trên hành vi và lịch sử bài đăng, giúp Admin nhận diện sớm các tài khoản nghi vấn.
+*   **Pulse Monitoring:** Đèn báo trạng thái Online/Offline thời gian thực (Pulse) và thông tin `Last Seen` được chuẩn hóa theo múi giờ Việt Nam.
+*   **Executive Actions:**
+    *   **Seal Account (Ban):** Khóa tài khoản vĩnh viễn hoặc theo thời hạn (1 ngày, 7 ngày).
+    *   **Access Elevation:** Chỉnh sửa cấp độ quyền hạn (Owner - Level 1, Moderator - Level 2, User - Level 3).
+    *   **Secure Termination (Delete):** Xóa hoàn toàn danh tính người dùng cùng toàn bộ dữ liệu liên quan (Tin nhắn, Bài đăng, Logs) để bảo vệ tính toàn vẹn hệ thống.
+
+#### 🔍 8.3. Audit Dossier (Nhật ký Kiểm toán & Giám sát)
+*   **Surveillance Operations:** Mọi hành động nhạy cảm (Xóa bài, Ban user, Cập nhật quyền) đều được ghi lại tự động vào Nhật ký hệ thống với đầy đủ bối cảnh (Context).
+*   **Smart Filtering:** Hệ thống lọc lịch sử theo Actor (Người thực hiện), Hành động hoặc khoảng thời gian cụ thể (DatePicker).
+*   **Metadata Decryption:** Modal chi tiết giải mã dữ liệu hành động, hiển thị hồ sơ chi tiết của Admin thực thi và các tham số kỹ thuật liên quan (Execution Metadata).
+*   **Protocol Copy:** Hỗ trợ sao chép nhanh báo cáo hành động vào clipboard dành cho công tác báo cáo cấp cao.
+
+#### 📢 8.4. Strategic Broadcast (Phát sóng Thông điệp)
+*   **Mass Announcement:** Gửi thông báo khẩn cấp tới toàn bộ cộng đồng người dùng ngay lập tức qua giao thức Socket.IO.
+*   **Immersion UI:** Thông báo hiển thị dưới dạng Toast cao cấp tại góc màn hình người dùng, không làm gián đoạn trải nghiệm của họ.
+*   **Persistence:** Hệ thống tự động gửi bản sao thông báo vào hộp thư cá nhân (Inbox) của mọi người dùng để đảm bảo thông tin không bị bỏ lỡ.
+
+
+#### ⚙️ 8.5. Technical Implementation (Nền tảng Kỹ thuật)
+*   **Temporal Logic (UTC+7):** Toàn bộ dữ liệu thời gian và thống kê được xử lý qua lớp chuyển đổi chuyên biệt, đảm bảo các báo cáo "Trong ngày" luôn bắt đầu chính xác từ 00:00 giờ Việt Nam.
+*   **Database Schema Extension:** Hệ thống tự động mở rộng bảng `User` để hỗ trợ các trường `created_at`, `trust_score`, `level`... thông qua cơ chế Auto-Migration tích hợp trong `create_app()`.
+*   **Security Layer:** Sử dụng Decorator `@admin_required` đa lớp kết hợp với kiểm tra Level (quyền cấp trên mới được thao tác trên cấp dưới) để đảm bảo an ninh tuyệt đối.
+
+---
+
 ## 🆘 Hỗ trợ
 Nếu quá trình cài đặt gặp lỗi xuất hiện trên Terminal báo đỏ (đặc biệt các dạng lỗi `ImportError` ở thư viện scikit-learn, psycopg binary hoặc cài thiếu package eventlet / SocketIO), bạn hãy copy đoạn text log lỗi đó vào box chat team hoặc hỏi ChatBot để được hỗ trợ lệnh pip cài bổ sung ngay kịp thời!
 

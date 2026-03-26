@@ -14,8 +14,16 @@ bp = Blueprint('posts_delete', __name__)
 def delete_post(item_id):
     item = Item.query.get_or_404(item_id)
     
-    # Check permission: Admin or Owner
-    if not current_user.is_admin and current_user.id != item.user_id:
+    # Check permission: Super Admin (1), Moderator (2) or Owner
+    is_authorized = (current_user.id == item.user_id)
+    if current_user.level == 1:
+        is_authorized = True
+    elif current_user.level == 2:
+        # Moderator can delete posts of Level 3 users or their own
+        if item.user.level > 2 or item.user_id == current_user.id:
+            is_authorized = True
+            
+    if not is_authorized:
         flash('Bạn không có quyền xóa bài này.', 'danger')
         return redirect(url_for('posts_view.index'))
         

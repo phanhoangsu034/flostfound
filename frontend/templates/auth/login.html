@@ -17,7 +17,7 @@
                         class="fas fa-lock text-xs mr-1"></i> Quên mật khẩu?</a>
             </div>
             <div class="relative">
-                <input id="password-input" type="password" name="password" required
+                <input id="password-input" type="password" name="password" required autocomplete="off"
                     class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 pr-10">
                 <span id="toggle-password"
                     class="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer text-gray-400 hover:text-orange-600 transition-colors">
@@ -26,9 +26,8 @@
             </div>
         </div>
         <button type="submit"
-            class="w-full bg-orange-600 text-white font-bold py-2 px-4 rounded-md hover:bg-orange-700 transition duration-300">
-            Đăng Nhập
-        </button>
+            class="w-full bg-orange-600 text-white font-bold py-2 px-4 rounded-md hover:bg-orange-700 transition duration-300 select-none">Đăng
+            Nhập</button>
 
         <!-- Social Login Section -->
         <div class="mt-6">
@@ -59,7 +58,7 @@
 
     <p class="mt-6 text-center text-sm text-gray-600">
         Chưa có tài khoản? <a href="{{ url_for('auth_register.register') }}"
-            class="text-orange-600 font-bold hover:underline">Đăng ký thủ công ngay</a>
+            class="text-orange-600 font-bold hover:underline">Đăng ký ngay</a>
     </p>
 </div>
 
@@ -119,7 +118,12 @@
         } catch (error) {
             console.error("Lỗi đăng nhập " + providerName + ":", error);
             if (error.code !== 'auth/popup-closed-by-user') {
-                alert("Lỗi đăng nhập " + providerName + ": " + (error.customData?.email ? 'Trùng Email với nền tảng khác' : error.message));
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi đăng nhập',
+                    text: (error.customData?.email ? 'Trùng Email với nền tảng khác' : error.message),
+                    confirmButtonColor: '#ea580c'
+                });
             }
         }
     }
@@ -137,7 +141,12 @@
     // Hàm vận chuyển dữ liệu bắn JSON lên API Backend
     async function sendToBackend(email, name, avatar, provider) {
         if (!email) {
-            alert("Rất tiếc! Tài khoản " + provider + " của bạn không công khai địa chỉ Email nên hệ thống không thể khởi tạo dữ liệu. Vui lòng thử dùng Google!");
+            Swal.fire({
+                icon: 'warning',
+                title: 'Thiếu thông tin Email',
+                text: "Rất tiếc! Tài khoản " + provider + " của bạn không công khai địa chỉ Email nên hệ thống không thể khởi tạo dữ liệu. Vui lòng thử dùng Google!",
+                confirmButtonColor: '#ea580c'
+            });
             return;
         }
 
@@ -151,7 +160,12 @@
         if (data.success) {
             window.location.href = data.redirect;
         } else {
-            alert('Hệ thống từ chối: ' + data.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Hệ thống từ chối',
+                text: data.message,
+                confirmButtonColor: '#ea580c'
+            });
         }
     }
 </script>

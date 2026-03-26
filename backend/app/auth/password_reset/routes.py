@@ -34,6 +34,9 @@ def api_forgot_password():
         # For simplicity and given EmailJS constraints, let's return an error if email not found.
         return jsonify({'success': False, 'message': 'Không tìm thấy tài khoản với email này.'}), 404
         
+    if user.auth_provider == 'google':
+        return jsonify({'success': False, 'message': 'Tài khoản này đã được liên kết với Google. Vui lòng đăng nhập bằng Google để bảo mật.'}), 403
+        
     s = get_serializer()
     # Create a token containing the user's ID
     token = s.dumps(user.id, salt='password-reset-salt')

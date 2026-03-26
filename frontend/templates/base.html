@@ -197,6 +197,21 @@
         .animate-slide-down {
             animation: slideDown 0.3s ease-out forwards;
         }
+
+        /* Hide default browser revealing passwords tools */
+        input::-ms-reveal,
+        input::-ms-clear {
+            display: none;
+        }
+
+        input::-webkit-contacts-auto-fill-button,
+        input::-webkit-credentials-auto-fill-button {
+            display: none !important;
+            visibility: hidden;
+            pointer-events: none;
+            position: absolute;
+            right: 0;
+        }
     </style>
 
 </head>
@@ -220,6 +235,7 @@
                 <!-- Desktop Links & Buttons -->
                 <div class="hidden md:flex items-center space-x-2">
                     <a href="{{ url_for('posts_view.index') }}"
+<<<<<<< HEAD
                         class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Trang
                         Chủ</a>
                     <a href="{{ url_for('profile.about') }}"
@@ -235,6 +251,16 @@
                         <i id="theme-toggle-dark-icon" class="fas fa-moon hidden text-lg"></i>
                         <i id="theme-toggle-light-icon" class="fas fa-sun hidden text-lg"></i>
                     </button>
+=======
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Trang
+                        Chủ</a>
+                    <a href="{{ url_for('profile.about') }}"
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Giới
+                        Thiệu</a>
+                    <a href="{{ url_for('profile.guide') }}"
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Hướng
+                        Dẫn</a>
+>>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
 
                     {% if current_user.is_authenticated %}
                     <button type="button" onclick="openCreateModal()"
@@ -267,9 +293,13 @@
                                 <a href="{{ url_for('profile.activity') }}"
                                     class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt
                                     Động</a>
+<<<<<<< HEAD
                                 <a href="{{ url_for('profile.change_password') }}"
                                     class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Đổi Mật Khẩu</a>
                                 {% if current_user.is_admin %}
+=======
+                                {% if current_user.level == 1 %}
+>>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
                                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
                                     class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
                                 {% endif %}
@@ -299,6 +329,7 @@
                     </a>
                     {% endif %}
 
+<<<<<<< HEAD
                     <!-- Dark Mode Toggle Mobile -->
                     <button id="theme-toggle-mobile" type="button"
                         class="text-gray-600 hover:text-orange-600 dark:text-gray-400 focus:outline-none">
@@ -307,6 +338,10 @@
 
                     <button type="button" onclick="toggleMobileMenu()"
                         class="text-gray-600 hover:text-orange-600 focus:outline-none transform active:scale-95 transition">
+=======
+                    <button type="button" onclick="toggleMobileMenu()"
+                        class="text-gray-600 hover:text-orange-600 focus:outline-none">
+>>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
                         <i id="mobile-menu-icon" class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
@@ -340,10 +375,14 @@
                 <a href="{{ url_for('profile.activity') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý
                     Hoạt Động</a>
+<<<<<<< HEAD
                 <a href="{{ url_for('profile.change_password') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Đổi Mật
                     Khẩu</a>
                 {% if current_user.is_admin %}
+=======
+                {% if current_user.level == 1 %}
+>>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin
                     Panel</a>
@@ -590,6 +629,42 @@
 
                 container.appendChild(toast);
                 setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 4000);
+            });
+
+            // 📢 🌍 Lắng nghe thông báo toàn hệ thống (System Broadcast)
+            window.globalSocket.on('announcement', (data) => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-4 min-w-[320px] bg-gray-900 border-l-4 border-orange-500 scale-105 cursor-pointer';
+
+                // Clicking takes to inbox
+                toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
+
+                // Play notification sound
+                const globalSound = document.getElementById('globalNotifSound');
+                if (globalSound) globalSound.play().catch(e => { });
+
+                // Hiện Badge đỏ trên Menu
+                const navBadge = document.getElementById('nav-badge');
+                if (navBadge) navBadge.classList.remove('hidden');
+
+                toast.innerHTML = `
+                    <div class="bg-orange-600 p-2 rounded-lg mt-0.5"><i class="fas fa-bullhorn rotate-[-10deg]"></i></div>
+                    <div class="flex-grow">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-xs uppercase tracking-widest text-orange-400">Thông báo hệ thống</span>
+                            <span class="text-[9px] opacity-50">Vừa xong</span>
+                        </div>
+                        <p class="text-sm font-medium leading-relaxed">${data.message}</p>
+                        <p class="text-[9px] text-gray-500 mt-2 italic">Nhấn để xem trong hộp thư</p>
+                    </div>`;
+
+                container.appendChild(toast);
+                // Announcements stay a bit longer (8 seconds)
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-x-full');
+                    setTimeout(() => toast.remove(), 500);
+                }, 8000);
             });
             {% endif %}
         });

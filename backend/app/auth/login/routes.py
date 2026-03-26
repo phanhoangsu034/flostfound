@@ -34,6 +34,7 @@ def social_login():
             
         new_user = User(email=email, username=username, full_name=name)
         new_user.avatar_url = avatar
+        new_user.auth_provider = 'google'
         
         # Đặt 1 mật khẩu random cực khó - Khóa chết việc đăng nhập tay
         random_password = secrets.token_urlsafe(16)
@@ -42,9 +43,22 @@ def social_login():
         db.session.add(new_user)
         db.session.commit()
         user = new_user
+    else:
+        # Nếu tài khoản đã được đăng ký theo cách thông thường (local)
+        if getattr(user, 'auth_provider', 'local') == 'local':
+             return jsonify({
+                 'success': False, 
+                 'message': 'Email này đã được đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng email và mật khẩu.'
+             })
+             
+        # Nếu tài khoản đã có (và là google), cập nhật avatar
+        user.avatar_url = avatar or user.avatar_url
+        user.auth_provider = 'google'
+        db.session.commit()
 
     # 3. Đăng nhập cho cả Acc cũ lẫn mới
     login_user(user, remember=True)
+    flash("Đăng nhập thành công. Chào mừng bạn quay lại!", "success")
     return jsonify({'success': True, 'redirect': url_for('posts_view.index')})
 
 @bp.route('/login', methods=['GET', 'POST'])
@@ -54,10 +68,12 @@ def login():
         password = request.form.get('password')
         
         user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
+        if not user:
+            flash('Tên đăng nhập không tồn tại.', 'danger')
+        elif not user.check_password(password):
+            flash('Mật khẩu không chính xác.', 'danger')
+        else:
             login_user(user, remember=True)
             return redirect(url_for('posts_view.index'))
-        else:
-            flash('Đăng nhập thất bại. Kiểm tra lại thông tin.', 'danger')
             
     return render_template('auth/login.html')
