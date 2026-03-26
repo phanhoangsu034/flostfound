@@ -158,9 +158,12 @@ def change_password():
         new_pass  = request.form.get('new_password', '')
         conf_pass = request.form.get('confirm_password', '')
 
-        if not current_user.check_password(old_pass):
-            flash('Mật khẩu hiện tại không đúng!', 'danger')
-            return redirect(url_for('profile.change_password'))
+        # Google Users don't need to provide an old password (as they don't have one set)
+        if current_user.auth_provider != 'google':
+            if not current_user.check_password(old_pass):
+                flash('Mật khẩu hiện tại không đúng!', 'danger')
+                return redirect(url_for('profile.change_password'))
+
 
         if len(new_pass) < 6:
             flash('Mật khẩu mới phải có ít nhất 6 ký tự.', 'danger')

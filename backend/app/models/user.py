@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    auth_provider = db.Column(db.String(20), default='local') # 'local' or 'google'
+    auth_provider = db.Column(db.String(50), default='local')
 
     # Profile fields
     full_name = db.Column(db.String(100))

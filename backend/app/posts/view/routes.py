@@ -26,3 +26,11 @@ def get_post_detail(item_id):
         'success': True,
         'data': item.to_dict()
     })
+
+@bp.route('/post/<int:item_id>')
+def post_detail_page(item_id):
+    """
+    Public route to view a single post (for SEO and Social Sharing)
+    """
+    item = Item.query.get_or_404(item_id)
+    return render_template('posts/detail.html', item=item)
