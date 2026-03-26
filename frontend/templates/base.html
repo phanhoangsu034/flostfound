@@ -235,7 +235,6 @@
                 <!-- Desktop Links & Buttons -->
                 <div class="hidden md:flex items-center space-x-2">
                     <a href="{{ url_for('posts_view.index') }}"
-<<<<<<< HEAD
                         class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Trang
                         Chủ</a>
                     <a href="{{ url_for('profile.about') }}"
@@ -251,16 +250,6 @@
                         <i id="theme-toggle-dark-icon" class="fas fa-moon hidden text-lg"></i>
                         <i id="theme-toggle-light-icon" class="fas fa-sun hidden text-lg"></i>
                     </button>
-=======
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Trang
-                        Chủ</a>
-                    <a href="{{ url_for('profile.about') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Giới
-                        Thiệu</a>
-                    <a href="{{ url_for('profile.guide') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Hướng
-                        Dẫn</a>
->>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
 
                     {% if current_user.is_authenticated %}
                     <button type="button" onclick="openCreateModal()"
@@ -293,13 +282,9 @@
                                 <a href="{{ url_for('profile.activity') }}"
                                     class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt
                                     Động</a>
-<<<<<<< HEAD
                                 <a href="{{ url_for('profile.change_password') }}"
                                     class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Đổi Mật Khẩu</a>
-                                {% if current_user.is_admin %}
-=======
                                 {% if current_user.level == 1 %}
->>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
                                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
                                     class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
                                 {% endif %}
@@ -329,7 +314,6 @@
                     </a>
                     {% endif %}
 
-<<<<<<< HEAD
                     <!-- Dark Mode Toggle Mobile -->
                     <button id="theme-toggle-mobile" type="button"
                         class="text-gray-600 hover:text-orange-600 dark:text-gray-400 focus:outline-none">
@@ -338,10 +322,6 @@
 
                     <button type="button" onclick="toggleMobileMenu()"
                         class="text-gray-600 hover:text-orange-600 focus:outline-none transform active:scale-95 transition">
-=======
-                    <button type="button" onclick="toggleMobileMenu()"
-                        class="text-gray-600 hover:text-orange-600 focus:outline-none">
->>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
                         <i id="mobile-menu-icon" class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
@@ -375,14 +355,10 @@
                 <a href="{{ url_for('profile.activity') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý
                     Hoạt Động</a>
-<<<<<<< HEAD
                 <a href="{{ url_for('profile.change_password') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Đổi Mật
                     Khẩu</a>
-                {% if current_user.is_admin %}
-=======
                 {% if current_user.level == 1 %}
->>>>>>> a46f54ea9531ac83aa47b06329d377396a348bd7
                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin
                     Panel</a>
