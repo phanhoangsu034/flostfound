@@ -21,6 +21,14 @@ def handle_message(data):
     if not current_user.is_authenticated:
         return
         
+    # CẢI TIẾN BẢO MẬT 3: Chặn chặn Spam văn bản rỗng, null, hoặc bot
+    if not body or not str(body).strip():
+        return
+        
+    # CẢI TIẾN BẢO MẬT 4: Chống Flood Text (Chỉ cho phép 1500 ký tự / tin), trừ URL của Ảnh
+    if not str(body).startswith('[IMAGE]') and len(str(body)) > 1500:
+        return # Im lặng drop gói tin rác này đi
+        
     msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
     db.session.add(msg)
     db.session.commit()

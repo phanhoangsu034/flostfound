@@ -43,6 +43,18 @@ def upload_image():
     if file.filename == '':
         return jsonify({"error": "Tập tin rỗng."}), 400
         
+    # CẢI TIẾN BẢO MẬT 1: Chống upload file độc hại (Chỉ nhận Ảnh)
+    if not file.mimetype.startswith('image/'):
+        return jsonify({"error": "Hệ thống chỉ chấp nhận định dạng Ảnh!"}), 400
+        
+    # CẢI TIẾN BẢO MẬT 2: Giới hạn dung lượng <= 5MB (Chống đầy băng thông cục bộ Cloudinary)
+    file.seek(0, 2) # Dò con trỏ đến đích để đọc ra kích thước Bytes
+    file_length = file.tell()
+    file.seek(0) # Bắt buộc phải reset lại con trỏ file, nếu không cloudinary upload sẽ lỗi ảnh rỗng
+    
+    if file_length > 5 * 1024 * 1024:
+        return jsonify({"error": "Dung lượng ảnh tải lên không được vượt quá 5MB!"}), 400
+        
     try:
         # Thêm vào folder flostfound/messages trên cloudinary
         result = cloudinary.uploader.upload(file, folder="flostfound/messages")
