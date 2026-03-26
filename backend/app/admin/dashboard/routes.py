@@ -88,7 +88,7 @@ def admin_users():
         query = query.filter((User.username.contains(search_query)) | (User.email.contains(search_query)))
     
     if role_filter == 'admin':
-        query = query.filter(User.level <= 2)
+        query = query.filter(User.level == 1)
     elif role_filter == 'banned':
         query = query.filter_by(is_banned=True)
     
@@ -108,8 +108,8 @@ def admin_users():
 def ban_user(user_id):
     user = User.query.get_or_404(user_id)
     # Permission check: current_user.level must be lower than user_to_ban.level (e.g. 1 can ban 3, but 2 cannot ban 1).
-    if current_user.level >= user.level:
-        flash("Bạn không có quyền ban người cùng cấp hoặc cấp cao hơn!", "danger")
+    if current_user.level != 1:
+        flash("Bạn không có quyền ban người dùng!", "danger")
         return redirect(url_for('admin_dashboard.admin_users'))
         
     duration = request.form.get('duration') # '1', '7', 'permanent'
@@ -158,12 +158,9 @@ def update_user_role(user_id):
         
     new_level = request.form.get('level', type=int)
     
-    if new_level == 1 and user.level != 1:
-        flash("Không thể thăng cấp lên Cấp 1 qua giao diện.", "warning")
-    elif new_level == 2:
-        user.level = 2
-        user.is_admin = True
-        flash(f"Đã cập nhật {user.username} thành Moderator (Cấp 2).", "success")
+    if new_level == 1:
+        # Prevent demoting self or promoting others to level 1 easily via UI
+        flash("Không thể thiết lập quyền Cấp 1 qua giao diện.", "warning")
     elif new_level == 3:
         user.level = 3
         user.is_admin = False
@@ -228,13 +225,11 @@ def create_user():
     elif User.query.filter_by(email=email).first():
         flash("Email đã tồn tại.", "danger")
     else:
-        new_user = User(username=username, email=email, level=level)
+        new_user = User(username=username, email=email, level=3) # Force new created users to level 3
         new_user.set_password(password)
-        if level <= 2:
-            new_user.is_admin = True
         db.session.add(new_user)
         db.session.commit()
-        flash(f"Đã tạo thành công tài khoản {username} (Cấp {level}).", "success")
+        flash(f"Đã tạo thành công tài khoản {username}.", "success")
         
     return redirect(url_for('admin_dashboard.admin_users'))
 

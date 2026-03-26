@@ -149,6 +149,10 @@ def edit_profile():
 @login_required
 def change_password():
     """Trang Đổi mật khẩu."""
+    if current_user.auth_provider == 'google':
+        flash('Bạn đăng nhập bằng Google, nên không cần (và không thể) đổi mật khẩu tại đây. Hãy quản lý tại Google Account.', 'warning')
+        return redirect(url_for('profile.profile'))
+        
     if request.method == 'POST':
         old_pass  = request.form.get('old_password', '')
         new_pass  = request.form.get('new_password', '')

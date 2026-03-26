@@ -292,7 +292,12 @@
 
         // Limit to 5 total?
         if (selectedFiles.length + files.length > 5) {
-            alert("Tối đa 5 ảnh.");
+            Swal.fire({
+                icon: 'warning',
+                title: 'Quá số lượng ảnh',
+                text: "Bạn chỉ được tải lên tối đa 5 ảnh.",
+                confirmButtonColor: '#ea580c'
+            });
             return;
         }
 
@@ -505,7 +510,12 @@
                         }
                     }, 1000);
                 } else {
-                    alert(data.message || 'Có lỗi xảy ra.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lỗi đăng tin',
+                        text: data.message || 'Có lỗi xảy ra trong quá trình đăng tin.',
+                        confirmButtonColor: '#ea580c'
+                    });
                     uploadOverlay.classList.add('hidden');
                     btn.disabled = false;
                     btnText.textContent = 'Đăng tin ngay';
@@ -515,7 +525,12 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Lỗi kết nối.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi kết nối',
+                    text: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau.',
+                    confirmButtonColor: '#ea580c'
+                });
                 uploadOverlay.classList.add('hidden');
                 btn.disabled = false;
                 btnText.textContent = 'Đăng tin ngay';

@@ -263,7 +263,12 @@
                 document.getElementById('toggleWebRtcCamBtn').classList.add('hidden');
                 return true;
             } catch (aErr) {
-                alert("Không thể truy cập Microphone! Hãy cấp quyền trên trình duyệt.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi Microphone',
+                    text: 'Không thể truy cập Microphone! Vui lòng cấp quyền micro trên trình duyệt để gọi điện.',
+                    confirmButtonColor: '#ea580c'
+                });
                 return false;
             }
         }
