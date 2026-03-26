@@ -251,7 +251,7 @@
     function openCreateModal() {
         document.getElementById('createPostModal').classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
-        
+
         // Auto-fill Location from LocalStorage
         const lastLoc = localStorage.getItem('last_location_draft');
         if (lastLoc) {
