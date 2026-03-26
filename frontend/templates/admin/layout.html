@@ -80,7 +80,7 @@
                     <div class="overflow-hidden">
                         <p class="text-[11px] font-black text-gray-900 truncate uppercase">{{ current_user.username }}</p>
                         <p class="text-[9px] text-orange-500 uppercase font-black tracking-widest leading-none mt-1">
-                            {% if current_user.level == 1 %}Super Admin{% elif current_user.level == 2 %}Moderator{% else %}Staff{% endif %}
+                            {% if current_user.level == 1 %}Super Admin{% else %}Staff{% endif %}
                         </p>
                     </div>
                 </div>

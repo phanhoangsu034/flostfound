@@ -186,13 +186,23 @@
                 if (response.success) {
                     populateDetail(response.data);
                 } else {
-                    alert('Không tìm thấy bài viết.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Không tìm thấy',
+                        text: 'Bài viết này có thể đã bị xóa hoặc không tồn tại.',
+                        confirmButtonColor: '#ea580c'
+                    });
                     closeDetailModal();
                 }
             })
             .catch(err => {
                 console.error(err);
-                alert('Lỗi kết nối.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi kết nối',
+                    text: 'Không thể tải dữ liệu bài viết. Vui lòng thử lại.',
+                    confirmButtonColor: '#ea580c'
+                });
                 closeDetailModal();
             });
     }

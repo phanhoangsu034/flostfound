@@ -123,7 +123,12 @@
                     : clean;
             if (!/^\d{10}$/.test(normalized) || !validPrefixes.some(p => normalized.startsWith(p))) {
                 e.preventDefault();
-                alert('Số điện thoại không hợp lệ. Kiểm tra lại đầu số và độ dài (10 chữ số).');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Số điện thoại không hợp lệ',
+                    text: 'Kiểm tra lại đầu số và độ dài (phải đủ 10 chữ số).',
+                    confirmButtonColor: '#F27123'
+                });
             }
         }
     });
