@@ -55,8 +55,9 @@ def create_app(config_name=None):
             "ALTER TABLE user ADD COLUMN trust_score INTEGER DEFAULT 100",
             "ALTER TABLE user ADD COLUMN last_seen DATETIME",
             "ALTER TABLE user ADD COLUMN created_at DATETIME",
-            "ALTER TABLE user ADD COLUMN auth_provider VARCHAR(20) DEFAULT 'local'",
+            "ALTER TABLE user ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'local'",
             "ALTER TABLE item ADD COLUMN status VARCHAR(20) DEFAULT 'Open'"
+
         ]
         
         for statement in migrations:
