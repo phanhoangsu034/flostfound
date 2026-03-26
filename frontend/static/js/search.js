@@ -36,6 +36,10 @@
     const catSelect = document.getElementById("filter-category");
     const activeFiltersEl = document.getElementById("active-filters");
     const grid = document.getElementById("items-grid");
+    const itemsContainer = document.getElementById("items-container");
+    const lostGrid = document.getElementById("lost-items-grid");
+    const foundGrid = document.getElementById("found-items-grid");
+    const emptyStateContainer = document.getElementById("empty-state-container");
     const paginationEl = document.getElementById("pagination-bar");
 
     // ─── State ────────────────────────────────────────────
@@ -276,7 +280,13 @@
             renderResults(data);
         } catch (e) {
             console.error("Search error:", e);
-            grid.innerHTML = `<div class="col-span-full text-center py-8 text-red-500">Có lỗi xảy ra, vui lòng thử lại.</div>`;
+            const errHtml = `<div class="col-span-full text-center py-8 text-red-500">Có lỗi xảy ra, vui lòng thử lại.</div>`;
+            if (grid) grid.innerHTML = errHtml;
+            if (itemsContainer) itemsContainer.classList.add("hidden");
+            if (emptyStateContainer) {
+                emptyStateContainer.innerHTML = errHtml;
+                emptyStateContainer.classList.remove("hidden");
+            }
         }
     }
 
@@ -297,12 +307,23 @@
 
         // Cards
         if (!data.items.length) {
-            grid.innerHTML = renderEmptyState();
+            if (grid) grid.innerHTML = renderEmptyState();
+            if (itemsContainer) itemsContainer.classList.add("hidden");
+            if (emptyStateContainer) {
+                emptyStateContainer.innerHTML = renderEmptyState();
+                emptyStateContainer.classList.remove("hidden");
+            }
             paginationEl.innerHTML = "";
             return;
         }
 
-        let html = "";
+        if (itemsContainer) itemsContainer.classList.remove("hidden");
+        if (emptyStateContainer) emptyStateContainer.classList.add("hidden");
+
+        let htmlAll = "";
+        let htmlLost = "";
+        let htmlFound = "";
+
         data.items.forEach((item, i) => {
             const borderClass = item.item_type === "Lost" ? "card-lost" : "card-found";
             const badgeClasses = item.item_type === "Lost"
@@ -319,28 +340,28 @@
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition duration-300"></div>
                 </div>` : "";
 
-            html += `
+            const cardHtml = `
             <div onclick="openDetailModal(${item.id})"
-                 class="card-animate ${borderClass} bg-white rounded-xl shadow hover:shadow-xl transition duration-300 overflow-hidden relative border border-gray-100 flex flex-col cursor-pointer transform hover:-translate-y-1"
+                 class="card-animate ${borderClass} bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-md transition duration-300 overflow-hidden relative border border-slate-100 dark:border-gray-700 dark:hover:border-gray-500 flex flex-col cursor-pointer transform hover:-translate-y-1"
                  style="animation-delay:${i * 60}ms">
                 ${imgHtml}
                 <div class="p-6 flex-grow">
                     <div class="flex justify-between items-start mb-4">
-                        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${badgeClasses}">${badgeText}</span>
-                        <span class="text-gray-400 text-xs font-mono"><i class="far fa-clock mr-1"></i>${dateStr}</span>
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${badgeClasses} dark:bg-opacity-20 dark:border-opacity-30">${badgeText}</span>
+                        <span class="text-slate-400 dark:text-gray-500 text-xs font-mono"><i class="far fa-clock mr-1"></i>${dateStr}</span>
                     </div>
-                    <h3 class="text-xl font-bold text-gray-800 mb-2 truncate hover:text-orange-600 transition">${esc(item.title)}</h3>
-                    <p class="text-gray-600 text-sm mb-4 line-clamp-2">${esc(item.description)}</p>
-                    <div class="flex items-center text-gray-500 text-sm">
+                    <h3 class="text-xl font-bold text-slate-800 dark:text-gray-100 mb-2 truncate hover:text-orange-600 dark:hover:text-orange-400 transition">${esc(item.title)}</h3>
+                    <p class="text-slate-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">${esc(item.description)}</p>
+                    <div class="flex items-center text-slate-500 dark:text-gray-400 text-sm">
                         <i class="fas fa-map-marker-alt text-orange-500 mr-2"></i>${esc(item.location)}
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-gray-50 border-t flex justify-between items-center text-sm">
+                <div class="px-6 py-4 bg-slate-50 dark:bg-gray-800/50 border-t border-slate-100 dark:border-gray-700 flex justify-between items-center text-sm">
                     <div class="flex items-center space-x-2">
-                        <div class="w-8 h-8 rounded-full bg-white overflow-hidden border border-gray-200 shadow-sm flex items-center justify-center">
+                        <div class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 overflow-hidden border border-slate-200 dark:border-gray-600 shadow-sm flex items-center justify-center">
                             <img src="${item.user_avatar}" alt="${esc(username)}" class="w-full h-full object-cover">
                         </div>
-                        <span class="font-medium text-gray-700 truncate max-w-[100px]">${esc(username)}</span>
+                        <span class="font-medium text-slate-700 dark:text-gray-300 truncate max-w-[100px]">${esc(username)}</span>
                     </div>
                     <div class="flex items-center space-x-3">
                         ${item.phone_number ? `
@@ -363,8 +384,40 @@
                     </div>
                 </div>
             </div>`;
+
+            htmlAll += cardHtml;
+            if (item.item_type === "Lost") {
+                htmlLost += cardHtml;
+            } else {
+                htmlFound += cardHtml;
+            }
         });
-        grid.innerHTML = html;
+        
+        if (grid) grid.innerHTML = htmlAll;
+        const emptyLostHtml = `
+            <div class="col-span-full flex flex-col items-center justify-center py-12 px-4 text-center bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-700 border-dashed">
+                <div class="w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <i class="fas fa-search text-gray-300 dark:text-gray-500 text-lg"></i>
+                </div>
+                <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Không tìm thấy tin Mất đồ</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 max-w-[200px]">Hãy thử thay đổi từ khóa tìm kiếm hoặc thông số của bộ lọc.</p>
+            </div>
+        `;
+
+        const emptyFoundHtml = `
+            <div class="col-span-full flex flex-col items-center justify-center py-12 px-4 text-center bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-700 border-dashed">
+                <div class="w-12 h-12 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center mb-3 shadow-sm border border-gray-100 dark:border-gray-700">
+                    <i class="fas fa-hand-holding-heart text-gray-300 dark:text-gray-500 text-lg"></i>
+                </div>
+                <h3 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Không tìm thấy tin Nhặt được</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 max-w-[200px]">Có vẻ khu vực này chưa có thông tin nào phù hợp với bộ lọc.</p>
+            </div>
+        `;
+
+        if (lostGrid && foundGrid) {
+            lostGrid.innerHTML = htmlLost || emptyLostHtml;
+            foundGrid.innerHTML = htmlFound || emptyFoundHtml;
+        }
 
         // Pagination
         renderPagination(data.page, data.total_pages);
@@ -443,7 +496,11 @@
                 </div>
             </div>`;
         }
-        grid.innerHTML = html;
+        if (grid) grid.innerHTML = html;
+        if (lostGrid) lostGrid.innerHTML = html;
+        if (foundGrid) foundGrid.innerHTML = html;
+        if (emptyStateContainer) emptyStateContainer.classList.add("hidden");
+        if (itemsContainer) itemsContainer.classList.remove("hidden");
     }
 
     // ─── Active filter tags ──────────────────────────────

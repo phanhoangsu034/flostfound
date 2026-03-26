@@ -4,17 +4,17 @@
 
 <!-- Search Bar -->
 <div class="text-center mb-6">
-    <h1 class="text-4xl font-extrabold text-gray-900 mb-4">
+    <h1 class="text-4xl font-extrabold text-slate-800 dark:text-white mb-4 transition-colors">
         Tìm Đồ Thất Lạc <span class="text-orange-600">FPTU</span>
     </h1>
-    <p class="text-gray-600 mb-6">Kết nối cộng đồng, tìm lại đồ đã mất nhanh chóng.</p>
+    <p class="text-slate-500 dark:text-gray-400 mb-6 transition-colors">Kết nối cộng đồng, tìm lại đồ đã mất nhanh chóng.</p>
 
     <div class="max-w-2xl mx-auto relative" id="search-container">
         <div
-            class="search-wrapper flex shadow-md rounded-xl overflow-hidden border-2 border-transparent transition-all bg-white">
-            <span class="flex items-center pl-4 text-gray-400"><i class="fas fa-search"></i></span>
+            class="search-wrapper flex shadow-sm rounded-xl overflow-hidden border border-slate-200 transition-all bg-white dark:bg-gray-800 dark:border-gray-700">
+            <span class="flex items-center pl-4 text-slate-400"><i class="fas fa-search"></i></span>
             <input type="text" id="search-input" placeholder="Tìm kiếm (Chìa khóa, ví, thẻ xe...)" autocomplete="off"
-                class="flex-grow px-4 py-3.5 border-none focus:outline-none text-gray-800 bg-transparent">
+                class="flex-grow px-4 py-3.5 border-none focus:outline-none text-slate-700 dark:text-gray-200 bg-transparent">
             <button type="button" id="clear-search-btn"
                 class="hidden items-center px-3 text-gray-400 hover:text-gray-600 transition" title="Xóa tìm kiếm">
                 <i class="fas fa-times"></i>
@@ -32,8 +32,8 @@
 
 <!-- Filter Toggle Button -->
 <div class="flex items-center justify-between max-w-6xl mx-auto mb-4">
-    <button type="button" id="toggle-filter-btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
-                   bg-white border border-gray-200 text-gray-600 hover:border-orange-300
+    <button type="button" id="toggle-filter-btn" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                   bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 hover:border-orange-300
                    hover:text-orange-600 transition shadow-sm">
         <i class="fas fa-sliders-h"></i> Bộ lọc
         <span id="active-filter-count" class="hidden bg-orange-600 text-white rounded-full w-5 h-5 text-xs
@@ -42,37 +42,23 @@
 
     <div class="flex items-center gap-3">
         <!-- Result counter -->
-        <span id="result-counter" class="text-sm font-semibold text-gray-500"></span>
+        <span id="result-counter" class="text-sm font-medium text-slate-500 dark:text-gray-400"></span>
 
         <!-- Sort dropdown -->
-        <select id="sort-select" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white
-                       text-gray-700 focus:outline-none focus:border-orange-400 cursor-pointer shadow-sm">
+        <select id="sort-select" class="text-sm border border-slate-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-gray-800
+                       text-slate-600 dark:text-gray-200 focus:outline-none focus:border-orange-400 cursor-pointer shadow-sm">
             <option value="newest">Mới nhất</option>
             <option value="oldest">Cũ nhất</option>
-            <option value="relevance">Độ chính xác</option>
+
         </select>
     </div>
 </div>
 
-<!-- Filter Panel (collapsible) -->
 <div id="filter-panel" class="hidden max-w-6xl mx-auto mb-6">
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 p-5 transition-colors">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-            <!-- Type filter -->
-            <div>
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Loại tin</label>
-                <div class="flex gap-2">
-                    <button type="button" data-filter="type" data-value=""
-                        class="filter-chip active-generic type-chip">Tất cả</button>
-                    <button type="button" data-filter="type" data-value="Lost" class="filter-chip inactive type-chip">
-                        <i class="fas fa-exclamation-circle text-xs"></i> Mất đồ
-                    </button>
-                    <button type="button" data-filter="type" data-value="Found" class="filter-chip inactive type-chip">
-                        <i class="fas fa-check-circle text-xs"></i> Nhặt được
-                    </button>
-                </div>
-            </div>
+<!-- Type filter removed as items are now separated natively on the UI -->
 
             <!-- Status filter -->
             <div>
@@ -90,11 +76,11 @@
             <!-- Location filter (hierarchical) -->
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Khu vực</label>
-                <select id="filter-location" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white
+                <select id="filter-location" class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-gray-200
                                focus:outline-none focus:border-orange-400">
                     <option value="">Tất cả khu vực</option>
                 </select>
-                <select id="filter-sub-location" class="hidden w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white
+                <select id="filter-sub-location" class="hidden w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-gray-200
                                focus:outline-none focus:border-orange-400 mt-2">
                     <option value="">Tất cả các khu vực</option>
                 </select>
@@ -103,7 +89,7 @@
             <!-- Category filter -->
             <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Danh mục</label>
-                <select id="filter-category" class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white
+                <select id="filter-category" class="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-gray-200
                                focus:outline-none focus:border-orange-400">
                     <option value="">Tất cả danh mục</option>
                 </select>

@@ -251,6 +251,18 @@
     function openCreateModal() {
         document.getElementById('createPostModal').classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
+
+        // Auto-fill Location from LocalStorage
+        const lastLoc = localStorage.getItem('last_location_draft');
+        if (lastLoc) {
+            const locSelect = document.getElementById('location');
+            if (locSelect) {
+                const options = Array.from(locSelect.options).map(o => o.value);
+                if (options.includes(lastLoc)) {
+                    locSelect.value = lastLoc;
+                }
+            }
+        }
     }
 
     function closeCreateModal() {
@@ -496,6 +508,11 @@
                         setTimeout(() => {
                             uploadOverlay.classList.add('hidden');
                         }, 200);
+                    }
+
+                    // Save location for next time
+                    if (formData.get('location')) {
+                        localStorage.setItem('last_location_draft', formData.get('location'));
                     }
 
                     btnText.textContent = 'Đăng tin thành công!';
