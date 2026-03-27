@@ -24,6 +24,23 @@
 
             <!-- Form -->
             <form id="createPostForm" onsubmit="submitPost(event)" class="p-6">
+
+                <!-- Smart Match Suggestions Box -->
+                <div id="matchSuggestionsBox" class="hidden mb-6 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4 shadow-sm transition-all duration-300">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-magic text-blue-500 text-xl mt-1"></i>
+                        </div>
+                        <div class="ml-3 w-full">
+                            <h3 class="text-sm font-bold text-blue-800">Khoan đã! Có phải bạn đang tìm món đồ này?</h3>
+                            <p class="text-xs text-blue-600 mt-1 mb-3">Hệ thống AI vừa quét và thấy <span id="matchCount">0</span> tin đăng có vẻ giống với mô tả của bạn nhất:</p>
+                            <div id="matchCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <!-- Cards injected here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
 
                     <!-- Column 1: Classification -->
@@ -35,7 +52,7 @@
                         <div class="flex bg-gray-100 p-1 rounded-lg">
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" name="item_type" value="Lost" class="peer sr-only" checked
-                                    onchange="updateTheme(this)">
+                                    onchange="updateTheme(this); triggerMatchSearch()">
                                 <div
                                     class="text-center py-2 rounded-md peer-checked:bg-white peer-checked:text-red-600 peer-checked:shadow text-gray-500 font-medium transition-all duration-200">
                                     <i class="fas fa-search mr-2"></i>Mất đồ
@@ -43,7 +60,7 @@
                             </label>
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" name="item_type" value="Found" class="peer sr-only"
-                                    onchange="updateTheme(this)">
+                                    onchange="updateTheme(this); triggerMatchSearch()">
                                 <div
                                     class="text-center py-2 rounded-md peer-checked:bg-white peer-checked:text-green-600 peer-checked:shadow text-gray-500 font-medium transition-all duration-200">
                                     <i class="fas fa-hand-holding-heart mr-2"></i>Nhặt được
@@ -55,7 +72,7 @@
                         <div class="relative">
                             <input type="text" id="title" name="title"
                                 class="block rounded-lg px-2.5 pb-2.5 pt-5 w-full text-sm text-gray-900 bg-gray-50 border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-orange-600 peer"
-                                placeholder=" " required maxlength="100" />
+                                placeholder=" " required maxlength="100" oninput="triggerMatchSearch()" />
                             <label for="title"
                                 class="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-2.5 peer-focus:text-orange-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4">Tiêu
                                 đề tin (Ví dụ: Ví Sen màu nâu)</label>
@@ -67,7 +84,7 @@
                         <div class="relative">
                             <select id="category" name="category"
                                 class="block rounded-lg px-2.5 pb-2.5 pt-5 w-full text-sm text-gray-900 bg-gray-50 border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-orange-600 peer"
-                                required>
+                                required onchange="triggerMatchSearch()">
                                 <option value="" disabled selected></option>
                                 <option value="Ví tiền">Ví tiền</option>
                                 <option value="Giấy tờ">Giấy tờ tùy thân</option>
@@ -109,7 +126,7 @@
                             <div class="relative">
                                 <select id="location" name="location"
                                     class="block rounded-lg px-2.5 pb-2.5 pt-5 w-full text-sm text-gray-900 bg-gray-50 border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-orange-600 peer"
-                                    required>
+                                    required onchange="saveDraft()">
                                     <option value="" disabled selected></option>
                                     <option value="Alpha">Tòa Alpha</option>
                                     <option value="Beta">Tòa Beta</option>
@@ -131,7 +148,7 @@
                             <div class="relative">
                                 <input type="text" id="specific_location" name="specific_location"
                                     class="block rounded-lg px-2.5 pb-2.5 pt-5 w-full text-sm text-gray-900 bg-gray-50 border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-orange-600 peer"
-                                    placeholder=" " />
+                                    placeholder=" " oninput="saveDraft()" />
                                 <label for="specific_location"
                                     class="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-2.5 peer-focus:text-orange-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4">Phòng/Vị
                                     trí cụ thể</label>
@@ -142,7 +159,7 @@
                         <div class="relative">
                             <textarea id="description" name="description" rows="4"
                                 class="block rounded-lg px-2.5 pb-2.5 pt-5 w-full text-sm text-gray-900 bg-gray-50 border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-orange-600 peer"
-                                placeholder=" " required maxlength="500"></textarea>
+                                placeholder=" " required maxlength="500" oninput="triggerMatchSearch()"></textarea>
                             <label for="description"
                                 class="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-2.5 peer-focus:text-orange-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4">Mô
                                 tả chi tiết (đặc điểm, tình trạng...)</label>
@@ -248,19 +265,66 @@
 </div>
 
 <script>
+    // Auto save draft logic
+    function saveDraft() {
+        const draft = {
+            title: document.getElementById('title').value,
+            category: document.getElementById('category').value,
+            description: document.getElementById('description').value,
+            location: document.getElementById('location').value,
+            specific_location: document.getElementById('specific_location').value,
+        };
+        let itemType = 'Lost';
+        const typeRadios = document.querySelectorAll('input[name="item_type"]');
+        typeRadios.forEach(r => { if(r.checked) itemType = r.value; });
+        draft.item_type = itemType;
+        
+        localStorage.setItem('post_draft', JSON.stringify(draft));
+    }
+
+    function loadDraft() {
+        const draftStr = localStorage.getItem('post_draft');
+        if (draftStr) {
+            try {
+                const draft = JSON.parse(draftStr);
+                if (draft.title) document.getElementById('title').value = draft.title;
+                if (draft.category) document.getElementById('category').value = draft.category;
+                if (draft.description) document.getElementById('description').value = draft.description;
+                if (draft.location) document.getElementById('location').value = draft.location;
+                if (draft.specific_location) document.getElementById('specific_location').value = draft.specific_location;
+                
+                if (draft.item_type) {
+                    const typeRadios = document.querySelectorAll('input[name="item_type"]');
+                    typeRadios.forEach(r => { 
+                        r.checked = (r.value === draft.item_type);
+                        if (r.checked) updateTheme(r);
+                    });
+                }
+            } catch (e) {
+                console.error("Error loading draft", e);
+            }
+        }
+    }
+
+    function clearDraft() {
+        localStorage.removeItem('post_draft');
+    }
+
     function openCreateModal() {
         document.getElementById('createPostModal').classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
 
-        // Auto-fill Location from LocalStorage
+        // Load Full Draft
+        loadDraft();
+        triggerMatchSearch(); // Check matches immediately for loaded draft
+
+        // Auto-fill Location from LocalStorage (Fallback if draft is empty)
         const lastLoc = localStorage.getItem('last_location_draft');
-        if (lastLoc) {
-            const locSelect = document.getElementById('location');
-            if (locSelect) {
-                const options = Array.from(locSelect.options).map(o => o.value);
-                if (options.includes(lastLoc)) {
-                    locSelect.value = lastLoc;
-                }
+        const locSelect = document.getElementById('location');
+        if (lastLoc && !locSelect.value) {
+            const options = Array.from(locSelect.options).map(o => o.value);
+            if (options.includes(lastLoc)) {
+                locSelect.value = lastLoc;
             }
         }
     }
@@ -515,6 +579,8 @@
                         localStorage.setItem('last_location_draft', formData.get('location'));
                     }
 
+                    clearDraft(); // Clear draft on successful post
+
                     btnText.textContent = 'Đăng tin thành công!';
                     btnLoading.classList.add('hidden');
 
@@ -554,5 +620,71 @@
                 btnIcon.classList.remove('hidden');
                 btnLoading.classList.add('hidden');
             });
+    }
+
+    // Smart Matching Logic
+    let matchTimeout = null;
+    function triggerMatchSearch() {
+        saveDraft(); // Auto-save all fields whenever something triggers match search
+        
+        const title = document.getElementById('title').value;
+        const category = document.getElementById('category').value;
+        const desc = document.getElementById('description').value;
+        
+        let itemType = 'Lost';
+        const typeRadios = document.querySelectorAll('input[name="item_type"]');
+        typeRadios.forEach(r => { if(r.checked) itemType = r.value; });
+
+        if (!title || !category) {
+            document.getElementById('matchSuggestionsBox').classList.add('hidden');
+            return;
+        }
+
+        if (matchTimeout) clearTimeout(matchTimeout);
+        matchTimeout = setTimeout(() => {
+            fetch('/api/search/match', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    description: desc,
+                    category: category,
+                    item_type: itemType
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const box = document.getElementById('matchSuggestionsBox');
+                const container = document.getElementById('matchCardsContainer');
+                
+                if (data.success && data.matches && data.matches.length > 0) {
+                    document.getElementById('matchCount').textContent = data.matches.length;
+                    
+                    const getUrl = (path) => path.startsWith('http') ? path : `/static/${path.replace(/^static\//, '').replace(/^\/static\//, '')}`;
+                    
+                    container.innerHTML = data.matches.map(m => `
+                        <a href="javascript:void(0)" onclick="openDetailModal(${m.id})" class="flex items-center gap-3 p-2 bg-white rounded-lg border border-blue-100 hover:border-blue-400 hover:shadow-md transition">
+                            <div class="w-12 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                                ${m.image_url ? `<img src="${getUrl(m.image_url)}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-gray-400"><i class="fas fa-image"></i></div>`}
+                            </div>
+                            <div class="flex-grow min-w-0">
+                                <h4 class="text-xs font-bold text-gray-800 truncate">${m.title}</h4>
+                                <p class="text-[10px] text-gray-500 mt-0.5"><i class="fas fa-map-marker-alt text-red-500 mr-1"></i>${m.location}</p>
+                            </div>
+                            <div class="flex-shrink-0 flex flex-col items-end">
+                                <span class="text-[10px] font-bold text-green-600 bg-green-50 px-1 rounded border border-green-200">${Math.round(m.sim_score * 100)}% khớp</span>
+                                <i class="fas fa-chevron-right text-xs text-blue-400 mt-1"></i>
+                            </div>
+                        </a>
+                    `).join('');
+                    
+                    box.classList.remove('hidden');
+                } else {
+                    box.classList.add('hidden');
+                }
+            }).catch(err => {
+                console.error("[Match] Error matching:", err);
+            });
+        }, 800);
     }
 </script>

@@ -79,3 +79,81 @@ def api_locations():
 def api_categories():
     """Return category list."""
     return jsonify(get_categories())
+
+from app.models.item import Item
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+@bp.route('/api/search/match', methods=['POST'])
+def api_search_match():
+    """
+    Search for similar items (matching 50% - 80%) for the create post suggestions.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "No data provided"}), 400
+
+    title = data.get('title', '').strip()
+    desc = data.get('description', '').strip()
+    item_type = data.get('item_type', '').strip()
+    category = data.get('category', '').strip()
+
+    if not title or not item_type or not category:
+        return jsonify({"success": True, "matches": []})
+
+    opposite_type = 'Found' if item_type == 'Lost' else 'Lost'
+    
+    # Get candidates of opposite type and same category that are Open
+    candidates = Item.query.filter_by(
+        item_type=opposite_type, 
+        status='Open',
+        category=category
+    ).all()
+
+    if not candidates:
+        return jsonify({"success": True, "matches": []})
+
+    texts = [f"{c.title} {c.description}" for c in candidates]
+    new_text = f"{title} {desc}"
+
+    try:
+        vectorizer = TfidfVectorizer(token_pattern=r'(?u)\b\w+\b')
+        tfidf_matrix = vectorizer.fit_transform(texts)
+        new_vec = vectorizer.transform([new_text])
+        cosine_sims = cosine_similarity(new_vec, tfidf_matrix)[0]
+        
+        # Sort indices descending
+        top_indices = cosine_sims.argsort()[::-1]
+        
+        matches = []
+        for idx in top_indices:
+            sim = float(cosine_sims[idx])
+            # Strict threshold 50% - 80%
+            if 0.5 <= sim <= 0.8:
+                c = candidates[idx]
+                
+                # Determine primary image
+                img_url = c.image_url
+                if not img_url and c.images_list.count() > 0:
+                    img_url = c.images_list[0].image_url
+                
+                matches.append({
+                    "id": c.id,
+                    "title": c.title,
+                    "image_url": img_url,
+                    "location": c.location,
+                    "specific_location": c.specific_location,
+                    "date_posted": c.date_posted.isoformat() + 'Z',
+                    "sim_score": sim,
+                    "user": c.user.username,
+                    "item_type": c.item_type
+                })
+                
+                if len(matches) >= 3:
+                    break
+        
+        return jsonify({"success": True, "matches": matches})
+    except Exception as e:
+        print(f"Error in match search: {e}")
+        return jsonify({"success": True, "matches": []})
+

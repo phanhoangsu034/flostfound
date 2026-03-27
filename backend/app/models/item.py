@@ -42,5 +42,7 @@ class Item(db.Model):
             'user': self.user.username,
             'user_avatar': self.user.avatar, # Use the avatar property for fallback
             'user_id': self.user_id,
-            'status': self.status
+            'status': self.status,
+            'like_count': self.likes.count() if hasattr(self, 'likes') else 0,
+            'comment_count': self.comments.count() if hasattr(self, 'comments') else 0
         }

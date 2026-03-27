@@ -101,6 +101,7 @@ def register_blueprints(app):
     from app.posts.create.routes import bp as posts_create_bp
     from app.posts.delete.routes import bp as posts_delete_bp
     from app.posts.update.routes import bp as posts_update_bp
+    from app.posts.interactions.routes import bp as posts_interactions_bp
     
     # Messages blueprints
     from app.messages.chat.routes import bp as messages_chat_bp
@@ -126,6 +127,7 @@ def register_blueprints(app):
     app.register_blueprint(posts_create_bp)
     app.register_blueprint(posts_delete_bp)
     app.register_blueprint(posts_update_bp)
+    app.register_blueprint(posts_interactions_bp)
     app.register_blueprint(messages_chat_bp)
     app.register_blueprint(messages_inbox_bp)
     app.register_blueprint(admin_dashboard_bp)
