@@ -611,6 +611,48 @@
                 setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 4000);
             });
 
+            // 🏷️ Tag notification (khi bị tag trong comment)
+            window.globalSocket.on('tag_notification', (data) => {
+                // Play sound
+                const globalSound = document.getElementById('globalNotifSound');
+                if (globalSound) globalSound.play().catch(e => {});
+
+                // Show badge
+                const navBadge = document.getElementById('nav-badge');
+                if (navBadge) navBadge.classList.remove('hidden');
+                const navBadgeMobile = document.getElementById('nav-badge-mobile');
+                if (navBadgeMobile) navBadgeMobile.classList.remove('hidden');
+
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-5 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-3 min-w-[320px] bg-gradient-to-r from-orange-600 to-orange-500 cursor-pointer border-l-4 border-yellow-300';
+
+                toast.onclick = () => {
+                    if (typeof openDetailModal === 'function') {
+                        openDetailModal(data.item_id);
+                    } else {
+                        window.location.href = `/post/${data.item_id}`;
+                    }
+                };
+
+                const snippet = data.comment_snippet.length > 60 ? data.comment_snippet.substring(0, 60) + '...' : data.comment_snippet;
+
+                toast.innerHTML = `
+                    <img src="${data.actor_avatar}" class="w-10 h-10 rounded-full border-2 border-white/50 flex-shrink-0 mt-0.5">
+                    <div class="flex-grow min-w-0">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-sm">🏷️ ${data.actor_name}</span>
+                            <span class="text-[10px] opacity-80">Vừa xong</span>
+                        </div>
+                        <p class="text-xs opacity-95">đã nhắc đến bạn trong bình luận</p>
+                        <p class="text-[11px] mt-1 opacity-80 truncate italic">"${snippet}"</p>
+                        <p class="text-[9px] mt-1 opacity-60">📌 ${data.item_title || 'Bài viết'} · Nhấn để xem</p>
+                    </div>`;
+
+                container.appendChild(toast);
+                setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 6000);
+            });
+
             // 📢 🌍 Lắng nghe thông báo toàn hệ thống (System Broadcast)
             window.globalSocket.on('announcement', (data) => {
                 const container = document.getElementById('toast-container');

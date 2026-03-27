@@ -1,5 +1,5 @@
 <!-- Detail Modal -->
-<div id="detailModal" class="fixed inset-0 z-50 hidden overflow-y-auto" role="dialog" aria-modal="true">
+<div id="detailModal" class="fixed inset-0 z-[60] hidden overflow-y-auto" role="dialog" aria-modal="true">
     <!-- Backdrop -->
     <div class="fixed inset-0 bg-gray-900 bg-opacity-80 transition-opacity backdrop-filter backdrop-blur-sm"
         onclick="closeDetailModal()"></div>
@@ -118,6 +118,68 @@
                             <p class="text-gray-700 text-sm leading-relaxed whitespace-pre-line" id="detailDescription">
                                 --
                             </p>
+                        </div>
+
+                        <!-- ═══ LIKE BAR ═══ -->
+                        <div class="flex items-center justify-between py-3 border-t border-b border-gray-100 mb-4">
+                            <div class="flex items-center space-x-4">
+                                <button id="detailLikeBtn" onclick="toggleLike()" class="group flex items-center space-x-2 transition-all duration-200 focus:outline-none">
+                                    <div class="relative">
+                                        <i id="detailLikeIcon" class="far fa-heart text-xl text-gray-400 group-hover:text-red-500 transition-colors duration-200"></i>
+                                        <i id="detailLikePulse" class="fas fa-heart text-xl text-red-500 absolute inset-0 opacity-0 scale-0 transition-all duration-300"></i>
+                                    </div>
+                                    <span id="detailLikeCount" class="text-sm font-semibold text-gray-500">0</span>
+                                    <span class="text-xs text-gray-400">lượt thích</span>
+                                </button>
+                                <button onclick="document.getElementById('commentInput').focus()" class="flex items-center space-x-2 text-gray-400 hover:text-orange-500 transition-colors duration-200">
+                                    <i class="far fa-comment text-xl"></i>
+                                    <span id="detailCommentCount" class="text-sm font-semibold">0</span>
+                                    <span class="text-xs">bình luận</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ═══ COMMENT SECTION ═══ -->
+                        <div class="mb-6">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center">
+                                <i class="fas fa-comments mr-2"></i>Bình luận
+                            </h4>
+
+                            <!-- Comment List -->
+                            <div id="detailCommentList" class="space-y-3 max-h-[200px] overflow-y-auto pr-1 mb-3 scrollbar-thin">
+                                <div class="text-center text-sm text-gray-400 py-4 italic">Đang tải bình luận...</div>
+                            </div>
+
+                            <!-- Comment Form -->
+                            {% if current_user.is_authenticated %}
+                            <div class="flex items-start space-x-3 pt-3 border-t border-gray-100">
+                                <div class="w-8 h-8 rounded-full overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                                    {% if current_user.avatar %}
+                                    <img src="{{ current_user.avatar }}" class="w-full h-full object-cover">
+                                    {% else %}
+                                    <span class="text-xs font-bold text-gray-500">{{ current_user.username[0]|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow relative">
+                                    <input type="text" id="commentInput" placeholder="Viết bình luận... (gõ @ để tag)"
+                                        maxlength="500"
+                                        class="w-full bg-gray-100 rounded-full px-4 py-2 pr-10 text-sm border border-transparent focus:border-orange-300 focus:bg-white focus:outline-none transition-all duration-200"
+                                        onkeydown="handleCommentKeydown(event)"
+                                        oninput="handleMentionInput(event)">
+                                    <button onclick="submitComment()"
+                                        class="absolute right-2 top-1/2 -translate-y-1/2 text-orange-500 hover:text-orange-600 transition-colors p-1">
+                                        <i class="fas fa-paper-plane text-sm"></i>
+                                    </button>
+                                    <!-- @Mention Autocomplete Dropdown -->
+                                    <div id="mentionDropdown" class="hidden absolute bottom-full left-0 right-0 mb-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-[180px] overflow-y-auto z-50 scrollbar-thin">
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-3 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                <p class="text-sm text-gray-500"><a href="{{ url_for('auth_login.login') }}" class="text-orange-600 font-semibold hover:underline">Đăng nhập</a> để bình luận</p>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- User Actions (Chat/Call) -->
@@ -261,6 +323,38 @@
     .no-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
+    }
+    @keyframes fade-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+        animation: fade-in 0.3s ease-out forwards;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 4px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 9999px;
+    }
+    .scrollbar-thin {
+        scrollbar-width: thin;
+        scrollbar-color: #d1d5db transparent;
+    }
+    .mention-tag {
+        color: #ea580c;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .mention-tag:hover {
+        text-decoration: underline;
+    }
+    .mention-item {
+        transition: background-color 0.15s;
+    }
+    .mention-item:hover, .mention-item.active {
+        background-color: #fff7ed;
     }
 </style>
 
@@ -443,7 +537,12 @@
 
     function closeDetailModal() {
         document.getElementById('detailModal').classList.add('hidden');
-        document.body.classList.remove('overflow-hidden');
+        
+        // Modal Stacking Fix: Check if createPostModal is open before removing overflow-hidden
+        const createModal = document.getElementById('createPostModal');
+        if (!createModal || createModal.classList.contains('hidden')) {
+            document.body.classList.remove('overflow-hidden');
+        }
 
         // Check URL for cleanup
         const url = new URL(window.location);
@@ -583,6 +682,14 @@
             // Store current recipient ID for the click handler
             window.currentRecipientId = item.user_id;
         }
+
+        // Load like status and comments
+        loadLikeStatus(item.id);
+        loadComments(item.id);
+
+        // Set initial counts from data
+        document.getElementById('detailLikeCount').textContent = item.like_count || 0;
+        document.getElementById('detailCommentCount').textContent = item.comment_count || 0;
     }
 
     window.handleChatClick = () => {
@@ -642,6 +749,337 @@
             if (e.key === 'ArrowLeft') navigateImage(-1);
             if (e.key === 'ArrowRight') navigateImage(1);
             if (e.key === 'Escape') closeDetailModal();
+        }
+    });
+
+    // ═══════════════════════════════════════════
+    // LIKE FUNCTIONALITY
+    // ═══════════════════════════════════════════
+    window._likeAnimating = false;
+
+    function loadLikeStatus(itemId) {
+        fetch(`/api/posts/${itemId}/like_status`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    updateLikeUI(data.liked, data.like_count);
+                }
+            }).catch(() => {});
+    }
+
+    window.toggleLike = async () => {
+        if (window.CURRENT_USER_ID === null) {
+            Swal.fire({
+                title: 'Yêu cầu đăng nhập',
+                text: 'Bạn cần đăng nhập để thích bài viết!',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Đăng nhập ngay',
+                cancelButtonText: 'Để sau',
+                confirmButtonColor: '#ea580c'
+            }).then(result => {
+                if (result.isConfirmed) window.location.href = "{{ url_for('auth_login.login') }}";
+            });
+            return;
+        }
+
+        if (window._likeAnimating) return;
+        window._likeAnimating = true;
+
+        try {
+            const res = await fetch(`/api/posts/${currentDetailId}/like`, { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                updateLikeUI(data.liked, data.like_count);
+                // Pulse animation
+                if (data.liked) {
+                    const pulse = document.getElementById('detailLikePulse');
+                    pulse.classList.remove('opacity-0', 'scale-0');
+                    pulse.classList.add('opacity-100', 'scale-125');
+                    setTimeout(() => {
+                        pulse.classList.remove('opacity-100', 'scale-125');
+                        pulse.classList.add('opacity-0', 'scale-0');
+                    }, 400);
+                }
+            }
+        } catch (err) {
+            console.error('Like error:', err);
+        } finally {
+            setTimeout(() => { window._likeAnimating = false; }, 500);
+        }
+    };
+
+    function updateLikeUI(liked, count) {
+        const icon = document.getElementById('detailLikeIcon');
+        const countEl = document.getElementById('detailLikeCount');
+        countEl.textContent = count;
+
+        if (liked) {
+            icon.className = 'fas fa-heart text-xl text-red-500 transition-colors duration-200';
+        } else {
+            icon.className = 'far fa-heart text-xl text-gray-400 group-hover:text-red-500 transition-colors duration-200';
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    // COMMENT FUNCTIONALITY
+    // ═══════════════════════════════════════════
+    function loadComments(itemId) {
+        const container = document.getElementById('detailCommentList');
+        container.innerHTML = '<div class="text-center text-sm text-gray-400 py-4 italic">Đang tải...</div>';
+
+        fetch(`/api/posts/${itemId}/comments`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('detailCommentCount').textContent = data.comment_count;
+                    if (data.comments.length === 0) {
+                        container.innerHTML = '<div class="text-center text-sm text-gray-400 py-4 italic">Chưa có bình luận nào. Hãy là người đầu tiên!</div>';
+                        return;
+                    }
+                    container.innerHTML = data.comments.map(c => renderComment(c)).join('');
+                    container.scrollTop = 0;
+                }
+            }).catch(() => {
+                container.innerHTML = '<div class="text-center text-sm text-red-400 py-4 italic">Lỗi tải bình luận</div>';
+            });
+    }
+
+    function renderComment(c) {
+        const timeAgo = getTimeAgo(new Date(c.date_posted));
+        const avatarSrc = c.user_avatar || '';
+        const avatarHtml = avatarSrc
+            ? `<img src="${avatarSrc}" class="w-full h-full object-cover">`
+            : `<span class="text-xs font-bold text-gray-500">${c.username ? c.username.charAt(0).toUpperCase() : '?'}</span>`;
+
+        const deleteBtn = (window.CURRENT_USER_ID === c.user_id)
+            ? `<button onclick="deleteComment(${c.id})" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all duration-200 p-1" title="Xóa"><i class="fas fa-times text-xs"></i></button>`
+            : '';
+
+        return `
+            <div class="flex items-start space-x-3 group animate-fade-in" id="comment-${c.id}">
+                <div class="w-8 h-8 rounded-full overflow-hidden border border-gray-200 flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                    ${avatarHtml}
+                </div>
+                <div class="flex-grow">
+                    <div class="bg-gray-50 rounded-2xl rounded-tl-sm px-3 py-2">
+                        <span class="text-xs font-bold text-gray-800">${c.username}</span>
+                        <p class="text-sm text-gray-700 mt-0.5 whitespace-pre-line break-words">${highlightMentions(escapeHtml(c.content))}</p>
+                    </div>
+                    <div class="flex items-center space-x-3 mt-1 pl-1">
+                        <span class="text-[10px] text-gray-400">${timeAgo}</span>
+                        ${deleteBtn}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    window.submitComment = async () => {
+        const input = document.getElementById('commentInput');
+        if (!input) return;
+        const content = input.value.trim();
+        if (!content) return;
+
+        input.disabled = true;
+        try {
+            const res = await fetch(`/api/posts/${currentDetailId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            const data = await res.json();
+            if (data.success) {
+                input.value = '';
+                document.getElementById('detailCommentCount').textContent = data.comment_count;
+                // Prepend new comment to list
+                const container = document.getElementById('detailCommentList');
+                const emptyMsg = container.querySelector('.italic');
+                if (emptyMsg) container.innerHTML = '';
+                container.insertAdjacentHTML('afterbegin', renderComment(data.comment));
+            } else {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: data.message, showConfirmButton: false, timer: 2000 });
+            }
+        } catch (err) {
+            console.error('Comment error:', err);
+        } finally {
+            input.disabled = false;
+            input.focus();
+        }
+    };
+
+    window.deleteComment = async (commentId) => {
+        const result = await Swal.fire({
+            title: 'Xóa bình luận?',
+            text: 'Bình luận sẽ bị xóa vĩnh viễn.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Xóa',
+            cancelButtonText: 'Hủy',
+            confirmButtonColor: '#ef4444'
+        });
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                const el = document.getElementById(`comment-${commentId}`);
+                if (el) el.remove();
+                document.getElementById('detailCommentCount').textContent = data.comment_count;
+                // Check if empty
+                const container = document.getElementById('detailCommentList');
+                if (!container.children.length) {
+                    container.innerHTML = '<div class="text-center text-sm text-gray-400 py-4 italic">Chưa có bình luận nào</div>';
+                }
+            }
+        } catch (err) {
+            console.error('Delete comment error:', err);
+        }
+    };
+
+    // Utility functions
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    function getTimeAgo(date) {
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        if (seconds < 60) return 'vừa xong';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes} phút trước`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours} giờ trước`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days} ngày trước`;
+        return date.toLocaleDateString('vi-VN');
+    }
+
+    function highlightMentions(text) {
+        return text.replace(/@(\w+)/g, '<span class="mention-tag">@$1</span>');
+    }
+
+    // ═══════════════════════════════════════════
+    // @MENTION AUTOCOMPLETE
+    // ═══════════════════════════════════════════
+    let mentionSearchTimer = null;
+    let mentionActiveIndex = -1;
+    let mentionUsers = [];
+
+    window.handleMentionInput = (e) => {
+        const input = e.target;
+        const val = input.value;
+        const cursorPos = input.selectionStart;
+
+        // Find @ before cursor
+        const textBeforeCursor = val.substring(0, cursorPos);
+        const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+
+        if (!mentionMatch) {
+            closeMentionDropdown();
+            return;
+        }
+
+        const query = mentionMatch[1];
+        clearTimeout(mentionSearchTimer);
+        mentionSearchTimer = setTimeout(() => fetchMentionUsers(query), 250);
+    };
+
+    async function fetchMentionUsers(query) {
+        try {
+            const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+            const data = await res.json();
+            if (data.success && data.users.length > 0) {
+                mentionUsers = data.users;
+                mentionActiveIndex = -1;
+                renderMentionDropdown(data.users);
+            } else {
+                closeMentionDropdown();
+            }
+        } catch (err) {
+            closeMentionDropdown();
+        }
+    }
+
+    function renderMentionDropdown(users) {
+        const dd = document.getElementById('mentionDropdown');
+        dd.innerHTML = users.map((u, i) => `
+            <div class="mention-item flex items-center space-x-3 px-3 py-2 cursor-pointer ${i === mentionActiveIndex ? 'active' : ''}" onclick="insertMention('${u.username}')">
+                <img src="${u.avatar}" class="w-7 h-7 rounded-full object-cover border border-gray-200">
+                <span class="text-sm font-semibold text-gray-800">${u.username}</span>
+            </div>
+        `).join('');
+        dd.classList.remove('hidden');
+    }
+
+    function closeMentionDropdown() {
+        const dd = document.getElementById('mentionDropdown');
+        if (dd) {
+            dd.classList.add('hidden');
+            dd.innerHTML = '';
+        }
+        mentionUsers = [];
+        mentionActiveIndex = -1;
+    }
+
+    window.insertMention = (username) => {
+        const input = document.getElementById('commentInput');
+        const val = input.value;
+        const cursorPos = input.selectionStart;
+        const textBefore = val.substring(0, cursorPos);
+        const textAfter = val.substring(cursorPos);
+
+        // Replace @query with @username
+        const newBefore = textBefore.replace(/@\w*$/, `@${username} `);
+        input.value = newBefore + textAfter;
+        input.focus();
+        // Set cursor after the inserted mention
+        const newPos = newBefore.length;
+        input.setSelectionRange(newPos, newPos);
+        closeMentionDropdown();
+    };
+
+    window.handleCommentKeydown = (e) => {
+        const dd = document.getElementById('mentionDropdown');
+        const isOpen = dd && !dd.classList.contains('hidden') && mentionUsers.length > 0;
+
+        if (isOpen) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                mentionActiveIndex = Math.min(mentionActiveIndex + 1, mentionUsers.length - 1);
+                renderMentionDropdown(mentionUsers);
+                return;
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                mentionActiveIndex = Math.max(mentionActiveIndex - 1, 0);
+                renderMentionDropdown(mentionUsers);
+                return;
+            }
+            if (e.key === 'Enter' && mentionActiveIndex >= 0) {
+                e.preventDefault();
+                insertMention(mentionUsers[mentionActiveIndex].username);
+                return;
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeMentionDropdown();
+                return;
+            }
+        }
+
+        if (e.key === 'Enter') {
+            submitComment();
+        }
+    };
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#commentInput') && !e.target.closest('#mentionDropdown')) {
+            closeMentionDropdown();
         }
     });
 </script>
