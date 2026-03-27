@@ -33,6 +33,26 @@ def chat(recipient_id):
     
     return render_template('messages/chat.html', recipient=recipient, messages=messages, datetime=datetime)
 
+@bp.route('/api/messages/send_simple', methods=['POST'])
+@login_required
+def send_simple_message():
+    from flask import request, jsonify
+    from app.models.message import Message
+    from app.extensions import db
+    
+    data = request.get_json()
+    recipient_id = data.get('recipient_id')
+    body = data.get('message')
+    
+    if not recipient_id or not body:
+        return jsonify({'success': False, 'message': 'Thiếu thông tin'})
+        
+    msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
+    db.session.add(msg)
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
 @bp.route('/upload_image', methods=['POST'])
 @login_required
 def upload_image():

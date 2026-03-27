@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(150), unique=True, nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    auth_provider = db.Column(db.String(50), default='local')
 
     # Profile fields
     full_name = db.Column(db.String(100))
@@ -22,7 +23,7 @@ class User(UserMixin, db.Model):
 
     # System fields
     is_admin = db.Column(db.Boolean, default=False)
-    level = db.Column(db.Integer, default=3) # 1: Super Admin, 2: Moderator, 3: User
+    level = db.Column(db.Integer, default=3) # 1: Super Admin, 3: User
     is_banned = db.Column(db.Boolean, default=False)
     ban_until = db.Column(db.DateTime, nullable=True) # If null and is_banned=True, then permanent
     trust_score = db.Column(db.Integer, default=100) # 0-100 scale

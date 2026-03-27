@@ -6,111 +6,128 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>F-LostFound - Tìm Đồ Thất Lạc</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <!-- Dark Mode Init Script (prevent flicker) -->
+    <script>
+        // Force light mode on first visit, or use saved preference
+        if (localStorage.getItem('color-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+        }
+    </script>
+    {% block social_meta %}{% endblock %}
+
     <!-- Firebase SDK (Web Push Notifications) -->
     <script type="module">
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-      import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
 
-      // ============================================================
-      // ⚙️ CẤU HÌNH FIREBASE - Thay bằng config của bạn
-      // Lấy từ: Firebase Console → Project Settings → Your apps
-      // ============================================================
-      const FIREBASE_CONFIG = {
-        apiKey: "REPLACE_WITH_YOUR_API_KEY",
-        authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-        projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-        storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-        messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-        appId: "REPLACE_WITH_YOUR_APP_ID"
-      };
+        // ============================================================
+        // ⚙️ CẤU HÌNH FIREBASE - Thay bằng config của bạn
+        // Lấy từ: Firebase Console → Project Settings → Your apps
+        // ============================================================
+        const FIREBASE_CONFIG = {
+            apiKey: "REPLACE_WITH_YOUR_API_KEY",
+            authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+            projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+            storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+            messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+            appId: "REPLACE_WITH_YOUR_APP_ID"
+        };
 
-      // VAPID Key - Lấy từ: Firebase Console → Cloud Messaging → Web Push certificates
-      const VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+        // VAPID Key - Lấy từ: Firebase Console → Cloud Messaging → Web Push certificates
+        const VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
 
-      // Chỉ khởi động FCM nếu user đã đăng nhập
-      {% if current_user.is_authenticated %}
-      (async function initFCM() {
-        // Kiểm tra browser có hỗ trợ không
-        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-          console.log('[FCM] Browser không hỗ trợ Web Push');
-          return;
+        // Chỉ khởi động FCM nếu user đã đăng nhập
+        {% if current_user.is_authenticated %}
+        (async function initFCM() {
+            // Kiểm tra browser có hỗ trợ không
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                console.log('[FCM] Browser không hỗ trợ Web Push');
+                return;
+            }
+
+            try {
+                const app = initializeApp(FIREBASE_CONFIG);
+                const messaging = getMessaging(app);
+
+                // Đăng ký Service Worker
+                const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                    scope: '/'
+                });
+                console.log('[FCM] Service Worker đã đăng ký:', swRegistration.scope);
+
+                // Kiểm tra quyền hiện tại
+                const currentPermission = Notification.permission;
+
+                if (currentPermission === 'denied') {
+                    console.log('[FCM] Người dùng đã từ chối quyền notification');
+                    return;
+                }
+
+                if (currentPermission === 'default') {
+                    // Xin quyền lần đầu - hiển thị UI thân thiện
+                    showPermissionPrompt(messaging, VAPID_KEY);
+                } else {
+                    // Đã có quyền → lấy token ngay
+                    await registerFCMToken(messaging, VAPID_KEY);
+                }
+
+                // Xử lý Foreground notifications (khi đang mở tab)
+                onMessage(messaging, (payload) => {
+                    console.log('[FCM] Foreground message:', payload);
+                    // Foreground đã được xử lý bởi Socket.IO toast
+                    // FCM foreground chỉ log, không hiện lại toast
+                });
+
+            } catch (error) {
+                console.error('[FCM] Lỗi khởi tạo:', error);
+            }
+        })();
+
+        async function registerFCMToken(messaging, vapidKey) {
+            try {
+                const token = await getToken(messaging, { vapidKey: vapidKey });
+                if (!token) {
+                    console.warn('[FCM] Không lấy được token');
+                    return;
+                }
+
+                console.log('[FCM] Token lấy thành công:', token.substring(0, 20) + '...');
+
+                // Gửi token về server để lưu
+                const response = await fetch('/save-fcm-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+
+                if (response.ok) {
+                    console.log('[FCM] ✅ Token đã được lưu lên server');
+                    // Lưu token local để cleanup khi logout
+                    localStorage.setItem('fcm_token', token);
+                }
+            } catch (error) {
+                console.error('[FCM] Lỗi lấy token:', error);
+            }
         }
 
-        try {
-          const app = initializeApp(FIREBASE_CONFIG);
-          const messaging = getMessaging(app);
-
-          // Đăng ký Service Worker
-          const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-            scope: '/'
-          });
-          console.log('[FCM] Service Worker đã đăng ký:', swRegistration.scope);
-
-          // Kiểm tra quyền hiện tại
-          const currentPermission = Notification.permission;
-
-          if (currentPermission === 'denied') {
-            console.log('[FCM] Người dùng đã từ chối quyền notification');
-            return;
-          }
-
-          if (currentPermission === 'default') {
-            // Xin quyền lần đầu - hiển thị UI thân thiện
-            showPermissionPrompt(messaging, VAPID_KEY);
-          } else {
-            // Đã có quyền → lấy token ngay
-            await registerFCMToken(messaging, VAPID_KEY);
-          }
-
-          // Xử lý Foreground notifications (khi đang mở tab)
-          onMessage(messaging, (payload) => {
-            console.log('[FCM] Foreground message:', payload);
-            // Foreground đã được xử lý bởi Socket.IO toast
-            // FCM foreground chỉ log, không hiện lại toast
-          });
-
-        } catch (error) {
-          console.error('[FCM] Lỗi khởi tạo:', error);
-        }
-      })();
-
-      async function registerFCMToken(messaging, vapidKey) {
-        try {
-          const token = await getToken(messaging, { vapidKey: vapidKey });
-          if (!token) {
-            console.warn('[FCM] Không lấy được token');
-            return;
-          }
-
-          console.log('[FCM] Token lấy thành công:', token.substring(0, 20) + '...');
-
-          // Gửi token về server để lưu
-          const response = await fetch('/save-fcm-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: token })
-          });
-
-          if (response.ok) {
-            console.log('[FCM] ✅ Token đã được lưu lên server');
-            // Lưu token local để cleanup khi logout
-            localStorage.setItem('fcm_token', token);
-          }
-        } catch (error) {
-          console.error('[FCM] Lỗi lấy token:', error);
-        }
-      }
-
-      function showPermissionPrompt(messaging, vapidKey) {
-        // Hiện sau 3 giây để tránh quá đột ngột
-        setTimeout(() => {
-          Swal.fire({
-            title: '🔔 Bật thông báo',
-            html: `
+        function showPermissionPrompt(messaging, vapidKey) {
+            // Hiện sau 3 giây để tránh quá đột ngột
+            setTimeout(() => {
+                Swal.fire({
+                    title: '🔔 Bật thông báo',
+                    html: `
               <div style="text-align:left;padding:8px 0">
                 <p style="margin-bottom:12px;color:#555">Bật thông báo đẩy để không bỏ lỡ:</p>
                 <ul style="list-style:none;padding:0;">
@@ -120,39 +137,42 @@
                 </ul>
                 <p style="color:#888;font-size:13px;margin-top:12px">Thông báo sẽ hiện ngay cả khi bạn đóng tab!</p>
               </div>`,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonText: '✅ Cho phép',
-            cancelButtonText: '❌ Để sau',
-            confirmButtonColor: '#ea580c',
-            cancelButtonColor: '#6b7280',
-            reverseButtons: false
-          }).then(async (result) => {
-            if (result.isConfirmed) {
-              const permission = await Notification.requestPermission();
-              if (permission === 'granted') {
-                console.log('[FCM] ✅ Quyền được cấp!');
-                await registerFCMToken(messaging, vapidKey);
-              } else {
-                console.log('[FCM] ❌ Quyền bị từ chối');
-              }
-            }
-          });
-        }, 3000);
-      }
-      {% endif %}
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: '✅ Cho phép',
+                    cancelButtonText: '❌ Để sau',
+                    confirmButtonColor: '#ea580c',
+                    cancelButtonColor: '#6b7280',
+                    reverseButtons: false
+                }).then(async (result) => {
+                    if (result.isConfirmed) {
+                        const permission = await Notification.requestPermission();
+                        if (permission === 'granted') {
+                            console.log('[FCM] ✅ Quyền được cấp!');
+                            await registerFCMToken(messaging, vapidKey);
+                        } else {
+                            console.log('[FCM] ❌ Quyền bị từ chối');
+                        }
+                    }
+                });
+            }, 3000);
+        }
+        {% endif %}
     </script>
 
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f4f6f9;
+            /* Softer, cooler light gray */
+            color: #334155;
+            /* slate-700 */
         }
 
         .glass-header {
-            background: rgba(255, 255, 255, .95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(0, 0, 0, .05);
+            background: rgba(252, 253, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
         }
 
         /* Hover dropdown – stays open while cursor is over the group */
@@ -161,40 +181,76 @@
             visibility: visible;
             transform: translateY(0);
         }
+
         /* Mobile menu animation */
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
+
         .animate-slide-down {
             animation: slideDown 0.3s ease-out forwards;
+        }
+
+        /* Hide default browser revealing passwords tools */
+        input::-ms-reveal,
+        input::-ms-clear {
+            display: none;
+        }
+
+        input::-webkit-contacts-auto-fill-button,
+        input::-webkit-credentials-auto-fill-button {
+            display: none !important;
+            visibility: hidden;
+            pointer-events: none;
+            position: absolute;
+            right: 0;
         }
     </style>
 
 </head>
 
-<body class="flex flex-col min-h-screen"
+<body class="text-slate-700 flex flex-col min-h-screen dark:bg-gray-900 transition-colors duration-300"
     data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% endif %}">
 
-    <nav class="glass-header fixed w-full z-40 top-0">
+    <nav
+        class="glass-header dark:bg-gray-900/95 dark:border-gray-800 fixed w-full z-40 top-0 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
 
                 <!-- Brand -->
                 <div class="flex items-center">
                     <a href="{{ url_for('posts_view.index') }}" class="flex-shrink-0 flex items-center">
-                        <span class="text-xl md:text-2xl font-bold text-orange-600">F-LostFound</span>
+                        <span
+                            class="text-xl md:text-2xl font-bold text-orange-600 dark:text-orange-500">F-LostFound</span>
                     </a>
                 </div>
 
                 <!-- Desktop Links & Buttons -->
                 <div class="hidden md:flex items-center space-x-2">
                     <a href="{{ url_for('posts_view.index') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Trang Chủ</a>
+                        class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Trang
+                        Chủ</a>
                     <a href="{{ url_for('profile.about') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Giới Thiệu</a>
+                        class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Giới
+                        Thiệu</a>
                     <a href="{{ url_for('profile.guide') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm">Hướng Dẫn</a>
+                        class="text-slate-600 hover:text-orange-600 dark:text-gray-300 dark:hover:text-amber-400 px-3 py-2 rounded-md font-medium text-sm transition-colors">Hướng
+                        Dẫn</a>
+
+                    <!-- Dark Mode Toggle Desktop -->
+                    <button id="theme-toggle" type="button"
+                        class="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-amber-400 px-3 py-2 rounded-lg text-sm transition focus:outline-none transform hover:scale-110">
+                        <i id="theme-toggle-dark-icon" class="fas fa-moon hidden text-lg"></i>
+                        <i id="theme-toggle-light-icon" class="fas fa-sun hidden text-lg"></i>
+                    </button>
 
                     {% if current_user.is_authenticated %}
                     <button type="button" onclick="openCreateModal()"
@@ -214,26 +270,36 @@
                     <div class="relative dropdown-group ml-2">
                         <button type="button"
                             class="flex items-center gap-2 text-gray-700 hover:text-orange-600 px-2 py-2 rounded-md font-medium text-sm transition">
-                            <img src="{{ current_user.avatar }}" class="w-8 h-8 rounded-full border-2 border-orange-300" alt="Avatar">
+                            <img src="{{ current_user.avatar }}" class="w-8 h-8 rounded-full border-2 border-orange-300"
+                                alt="Avatar">
                             <span class="max-w-[80px] truncate">{{ current_user.username }}</span>
                             <i class="fas fa-chevron-down text-[10px]"></i>
                         </button>
-                        <div class="dropdown-menu absolute right-0 top-full pt-2 w-48 opacity-0 invisible transition-all z-50">
+                        <div
+                            class="dropdown-menu absolute right-0 top-full pt-2 w-48 opacity-0 invisible transition-all z-50">
                             <div class="bg-white rounded-xl shadow-xl border border-gray-100 py-1">
-                                <a href="{{ url_for('profile.profile') }}" class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Hồ Sơ</a>
-                                <a href="{{ url_for('profile.activity') }}" class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt Động</a>
-                                <a href="{{ url_for('profile.change_password') }}" class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Đổi Mật Khẩu</a>
-                                {% if current_user.level <= 2 %}
-                                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
+                                <a href="{{ url_for('profile.profile') }}"
+                                    class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Hồ Sơ</a>
+                                <a href="{{ url_for('profile.activity') }}"
+                                    class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt
+                                    Động</a>
+                                <a href="{{ url_for('profile.change_password') }}"
+                                    class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Đổi Mật Khẩu</a>
+                                {% if current_user.level == 1 %}
+                                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
+                                    class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
                                 {% endif %}
                                 <div class="border-t border-gray-100 my-1"></div>
-                                <a href="{{ url_for('auth_logout.logout') }}" class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-red-50">Đăng Xuất</a>
+                                <a href="{{ url_for('auth_logout.logout') }}"
+                                    class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-red-50">Đăng Xuất</a>
                             </div>
                         </div>
                     </div>
                     {% else %}
-                    <a href="{{ url_for('auth_login.login') }}" class="text-gray-700 hover:text-orange-600 px-3 py-2 text-sm font-medium">Đăng Nhập</a>
-                    <a href="{{ url_for('auth_register.register') }}" class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium ml-2">Đăng Ký</a>
+                    <a href="{{ url_for('auth_login.login') }}"
+                        class="text-gray-700 hover:text-orange-600 px-3 py-2 text-sm font-medium">Đăng Nhập</a>
+                    <a href="{{ url_for('auth_register.register') }}"
+                        class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium ml-2">Đăng Ký</a>
                     {% endif %}
                 </div>
 
@@ -242,13 +308,21 @@
                     {% if current_user.is_authenticated %}
                     <a href="{{ url_for('messages_inbox.messages_inbox') }}" class="relative text-gray-600">
                         <i class="fas fa-bell text-xl"></i>
-                        <span id="nav-badge-mobile" class="{% if unread_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
+                        <span id="nav-badge-mobile"
+                            class="{% if unread_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
                             {{ unread_count }}
                         </span>
                     </a>
                     {% endif %}
-                    
-                    <button type="button" onclick="toggleMobileMenu()" class="text-gray-600 hover:text-orange-600 focus:outline-none">
+
+                    <!-- Dark Mode Toggle Mobile -->
+                    <button id="theme-toggle-mobile" type="button"
+                        class="text-gray-600 hover:text-orange-600 dark:text-gray-400 focus:outline-none">
+                        <i class="fas fa-adjust text-xl"></i>
+                    </button>
+
+                    <button type="button" onclick="toggleMobileMenu()"
+                        class="text-gray-600 hover:text-orange-600 focus:outline-none transform active:scale-95 transition">
                         <i id="mobile-menu-icon" class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
@@ -257,29 +331,49 @@
         </div>
 
         <!-- Mobile Menu Panel -->
-        <div id="mobile-menu" class="hidden md:hidden bg-white border-b border-gray-100 shadow-xl overflow-hidden animate-slide-down">
+        <div id="mobile-menu"
+            class="hidden md:hidden bg-white border-b border-gray-100 shadow-xl overflow-hidden animate-slide-down">
             <div class="px-4 pt-2 pb-6 space-y-2">
-                <a href="{{ url_for('posts_view.index') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Trang Chủ</a>
-                <a href="{{ url_for('profile.about') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Giới Thiệu</a>
-                <a href="{{ url_for('profile.guide') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Hướng Dẫn</a>
-                
+                <a href="{{ url_for('posts_view.index') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Trang
+                    Chủ</a>
+                <a href="{{ url_for('profile.about') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Giới
+                    Thiệu</a>
+                <a href="{{ url_for('profile.guide') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Hướng
+                    Dẫn</a>
+
                 {% if current_user.is_authenticated %}
                 <div class="border-t border-gray-100 my-2"></div>
-                <button onclick="openCreateModal(); toggleMobileMenu();" class="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-3 rounded-xl font-bold mb-4">
+                <button onclick="openCreateModal(); toggleMobileMenu();"
+                    class="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-3 rounded-xl font-bold mb-4">
                     <i class="fas fa-plus"></i> Đăng Tin
                 </button>
                 <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">Tài Khoản</p>
-                <a href="{{ url_for('profile.profile') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Hồ Sơ</a>
-                <a href="{{ url_for('profile.activity') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý Hoạt Động</a>
-                <a href="{{ url_for('profile.change_password') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Đổi Mật Khẩu</a>
-                {% if current_user.level <= 2 %}
-                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}" class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin Panel</a>
+                <a href="{{ url_for('profile.profile') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Hồ Sơ</a>
+                <a href="{{ url_for('profile.activity') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý
+                    Hoạt Động</a>
+                <a href="{{ url_for('profile.change_password') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Đổi Mật
+                    Khẩu</a>
+                {% if current_user.level == 1 %}
+                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin
+                    Panel</a>
                 {% endif %}
-                <a href="{{ url_for('auth_logout.logout') }}" class="block px-3 py-3 rounded-xl text-base font-bold text-red-600 hover:bg-red-50">Đăng Xuất</a>
+                <a href="{{ url_for('auth_logout.logout') }}"
+                    class="block px-3 py-3 rounded-xl text-base font-bold text-red-600 hover:bg-red-50">Đăng Xuất</a>
                 {% else %}
                 <div class="grid grid-cols-2 gap-3 pt-2">
-                    <a href="{{ url_for('auth_login.login') }}" class="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-bold">Đăng Nhập</a>
-                    <a href="{{ url_for('auth_register.register') }}" class="flex items-center justify-center px-4 py-3 bg-gray-800 text-white rounded-xl font-bold">Đăng Ký</a>
+                    <a href="{{ url_for('auth_login.login') }}"
+                        class="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-bold">Đăng
+                        Nhập</a>
+                    <a href="{{ url_for('auth_register.register') }}"
+                        class="flex items-center justify-center px-4 py-3 bg-gray-800 text-white rounded-xl font-bold">Đăng
+                        Ký</a>
                 </div>
                 {% endif %}
             </div>
@@ -289,7 +383,8 @@
     <!-- Toast Notifications -->
     <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col space-y-4">
         <!-- Audio for global notifications -->
-        <audio id="globalNotifSound" src="https://www.myinstants.com/media/sounds/discord-notification.mp3" preload="auto"></audio>
+        <audio id="globalNotifSound" src="https://www.myinstants.com/media/sounds/discord-notification.mp3"
+            preload="auto"></audio>
 
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -326,13 +421,19 @@
     </div>
     {% endif %}
 
+    <!-- Back to Top Button -->
+    <button id="backToTopBtn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="fixed bottom-24 right-6 z-40 hidden w-12 h-12 bg-gray-800 hover:bg-orange-600 text-white rounded-full shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-110 flex items-center justify-center opacity-0">
+        <i class="fas fa-chevron-up text-xl"></i>
+    </button>
+
     <!-- Main Content -->
     <main class="flex-grow container mx-auto px-4 pt-24 pb-12">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-800 text-gray-300 py-8">
+    <footer class="bg-gray-800 dark:bg-gray-950 text-gray-300 py-8 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-sm font-bold text-orange-400">F-LostFound</p>
@@ -354,7 +455,7 @@
             const menu = document.getElementById('mobile-menu');
             const icon = document.getElementById('mobile-menu-icon');
             const isHidden = menu.classList.contains('hidden');
-            
+
             if (isHidden) {
                 menu.classList.remove('hidden');
                 icon.classList.remove('fa-bars');
@@ -369,12 +470,89 @@
         document.addEventListener('DOMContentLoaded', () => {
 
             // Auto-dismiss toasts
+            // Auto-dismiss initial flash toasts
             document.querySelectorAll('.toast-message').forEach(toast => {
                 setTimeout(() => {
                     toast.classList.add('opacity-0', 'translate-x-full');
                     setTimeout(() => toast.remove(), 500);
                 }, 3500);
             });
+
+            // Back to top & Navbar scroll behavior
+            window.addEventListener('scroll', () => {
+                const btn = document.getElementById('backToTopBtn');
+                if (window.scrollY > 300) {
+                    btn.classList.remove('hidden');
+                    // Add a tiny delay to allow CSS transition on opacity
+                    setTimeout(() => btn.classList.remove('opacity-0'), 10);
+                } else {
+                    btn.classList.add('opacity-0');
+                    setTimeout(() => btn.classList.add('hidden'), 300);
+                }
+            });
+
+            // Global Toast Function
+            window.showToast = function (message, type = 'info') {
+                const container = document.getElementById('toast-container');
+                if (!container) return;
+                const toast = document.createElement('div');
+                let bgClass = type === 'success' ? 'bg-green-500' : (type === 'danger' || type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+                let iconClass = type === 'success' ? 'fa-check-circle' : (type === 'danger' || type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+
+                toast.className = `toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] ${bgClass}`;
+                toast.innerHTML = `<i class="fas ${iconClass} mr-3 text-xl"></i><span class="font-medium text-sm">${message}</span>`;
+
+                container.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-x-full');
+                    setTimeout(() => toast.remove(), 500);
+                }, 3500);
+            };
+
+            // Dark mode toggles
+            function toggleTheme() {
+                const darkIcon = document.getElementById('theme-toggle-dark-icon');
+                const lightIcon = document.getElementById('theme-toggle-light-icon');
+                if (darkIcon && lightIcon) {
+                    darkIcon.classList.toggle('hidden');
+                    lightIcon.classList.toggle('hidden');
+                }
+
+                if (localStorage.getItem('color-theme')) {
+                    if (localStorage.getItem('color-theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                    }
+                }
+            }
+
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
+
+            if (themeToggleBtn) {
+                const darkIcon = document.getElementById('theme-toggle-dark-icon');
+                const lightIcon = document.getElementById('theme-toggle-light-icon');
+                if (document.documentElement.classList.contains('dark')) {
+                    lightIcon.classList.remove('hidden');
+                } else {
+                    darkIcon.classList.remove('hidden');
+                }
+                themeToggleBtn.addEventListener('click', toggleTheme);
+            }
+            if (themeToggleMobileBtn) {
+                themeToggleMobileBtn.addEventListener('click', toggleTheme);
+            }
 
             {% if current_user.is_authenticated %}
             // Unlock audio on first user interaction
@@ -384,7 +562,7 @@
                     ringtone.play().then(() => {
                         ringtone.pause();
                         ringtone.currentTime = 0;
-                    }).catch(e => {});
+                    }).catch(e => { });
                 }
                 document.removeEventListener('click', unlockAudio);
             };
@@ -407,13 +585,16 @@
                 const container = document.getElementById('toast-container');
                 const toast = document.createElement('div');
                 toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] bg-blue-600 border-l-4 border-white cursor-pointer';
-                
+
                 toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
 
                 const now = new Date();
                 const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
 
                 const displayMessage = data.message.startsWith('[IMAGE]') ? '[Hình ảnh]' : data.message;
+                const tempDiv = document.createElement('div');
+                tempDiv.textContent = displayMessage;
+                const escapedMessage = tempDiv.innerHTML;
 
                 toast.innerHTML = `
                 <i class="fas fa-comment-dots mr-3 text-xl"></i>
@@ -422,7 +603,7 @@
                         <span class="font-bold text-sm">${data.sender_name}</span>
                         <span class="text-[10px] opacity-80">${timeStr}</span>
                     </div>
-                    <span class="text-xs truncate block max-w-[200px]">${displayMessage}</span>
+                    <span class="text-xs truncate block max-w-[200px]">${escapedMessage}</span>
                 </div>`;
 
 
@@ -435,13 +616,13 @@
                 const container = document.getElementById('toast-container');
                 const toast = document.createElement('div');
                 toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-4 min-w-[320px] bg-gray-900 border-l-4 border-orange-500 scale-105 cursor-pointer';
-                
+
                 // Clicking takes to inbox
                 toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
 
                 // Play notification sound
                 const globalSound = document.getElementById('globalNotifSound');
-                if (globalSound) globalSound.play().catch(e => {});
+                if (globalSound) globalSound.play().catch(e => { });
 
                 // Hiện Badge đỏ trên Menu
                 const navBadge = document.getElementById('nav-badge');
@@ -460,9 +641,9 @@
 
                 container.appendChild(toast);
                 // Announcements stay a bit longer (8 seconds)
-                setTimeout(() => { 
-                    toast.classList.add('opacity-0', 'translate-x-full'); 
-                    setTimeout(() => toast.remove(), 500); 
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-x-full');
+                    setTimeout(() => toast.remove(), 500);
                 }, 8000);
             });
             {% endif %}

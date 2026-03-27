@@ -7,13 +7,35 @@
 <!-- Search & Filter Component -->
 {% include 'search/search_filter.html' %}
 
-<!-- Items Grid (rendered by search.js via AJAX) -->
-<div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- Skeleton placeholders shown initially, replaced by JS -->
-    {% for i in range(6) %}
-    {% include 'search/skeleton_card.html' %}
-    {% endfor %}
+<!-- Two-column Items Layout -->
+<div id="items-container" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Left Column: Found Items -->
+    <div>
+        <h2 class="text-2xl font-bold text-green-600 mb-6 flex items-center border-b pb-2">
+            <i class="fas fa-check-circle mr-2"></i> Nhặt được
+        </h2>
+        <div id="found-items-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {% for i in range(4) %}
+            {% include 'search/skeleton_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Right Column: Lost Items -->
+    <div>
+        <h2 class="text-2xl font-bold text-red-600 mb-6 flex items-center border-b pb-2">
+            <i class="fas fa-exclamation-circle mr-2"></i> Mất đồ
+        </h2>
+        <div id="lost-items-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {% for i in range(4) %}
+            {% include 'search/skeleton_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
 </div>
+
+<!-- Container for Empty State -->
+<div id="empty-state-container" class="hidden"></div>
 
 <!-- Pagination -->
 <div id="pagination-bar" class="flex justify-center items-center gap-2 mt-8"></div>

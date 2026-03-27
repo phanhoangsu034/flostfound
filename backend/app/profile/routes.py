@@ -149,14 +149,21 @@ def edit_profile():
 @login_required
 def change_password():
     """Trang Đổi mật khẩu."""
+    if current_user.auth_provider == 'google':
+        flash('Bạn đăng nhập bằng Google, nên không cần (và không thể) đổi mật khẩu tại đây. Hãy quản lý tại Google Account.', 'warning')
+        return redirect(url_for('profile.profile'))
+        
     if request.method == 'POST':
         old_pass  = request.form.get('old_password', '')
         new_pass  = request.form.get('new_password', '')
         conf_pass = request.form.get('confirm_password', '')
 
-        if not current_user.check_password(old_pass):
-            flash('Mật khẩu hiện tại không đúng!', 'danger')
-            return redirect(url_for('profile.change_password'))
+        # Google Users don't need to provide an old password (as they don't have one set)
+        if current_user.auth_provider != 'google':
+            if not current_user.check_password(old_pass):
+                flash('Mật khẩu hiện tại không đúng!', 'danger')
+                return redirect(url_for('profile.change_password'))
+
 
         if len(new_pass) < 6:
             flash('Mật khẩu mới phải có ít nhất 6 ký tự.', 'danger')

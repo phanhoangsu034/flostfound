@@ -453,6 +453,7 @@ Dự án tích hợp một trung tâm điều hành tập trung (Command Center)
 *   **Immersion UI:** Thông báo hiển thị dưới dạng Toast cao cấp tại góc màn hình người dùng, không làm gián đoạn trải nghiệm của họ.
 *   **Persistence:** Hệ thống tự động gửi bản sao thông báo vào hộp thư cá nhân (Inbox) của mọi người dùng để đảm bảo thông tin không bị bỏ lỡ.
 
+
 #### ⚙️ 8.5. Technical Implementation (Nền tảng Kỹ thuật)
 *   **Temporal Logic (UTC+7):** Toàn bộ dữ liệu thời gian và thống kê được xử lý qua lớp chuyển đổi chuyên biệt, đảm bảo các báo cáo "Trong ngày" luôn bắt đầu chính xác từ 00:00 giờ Việt Nam.
 *   **Database Schema Extension:** Hệ thống tự động mở rộng bảng `User` để hỗ trợ các trường `created_at`, `trust_score`, `level`... thông qua cơ chế Auto-Migration tích hợp trong `create_app()`.

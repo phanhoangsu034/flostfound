@@ -8,7 +8,7 @@
                 <h1 class="text-2xl font-extrabold text-gray-800">User Management</h1>
                 <p class="text-sm text-gray-500 mt-1">Manage, ban, and promote users in the system.</p>
             </div>
-            {% if current_user.level <= 2 %}
+            {% if current_user.level == 1 %}
             <button onclick="openCreateUserModal()" class="ml-auto px-4 py-2.5 bg-orange-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-2xl hover:bg-orange-700 shadow-xl shadow-orange-100 transition flex items-center gap-2">
                 <i class="fas fa-plus"></i> Create User
             </button>
@@ -88,7 +88,7 @@
                             {% if user.level == 1 %}
                                 <span class="px-4 py-1.5 inline-flex text-[9px] font-black uppercase rounded-xl bg-red-900 text-red-50 shadow-sm border border-red-800">LEVEL 1: OWNER</span>
                             {% elif user.level == 2 %}
-                                <span class="px-4 py-1.5 inline-flex text-[9px] font-black uppercase rounded-xl bg-purple-600 text-purple-50 shadow-sm border border-purple-500">LEVEL 2: ADMIN</span>
+                                <span class="px-4 py-1.5 inline-flex text-[9px] font-black uppercase rounded-xl bg-gray-400 text-white shadow-sm border border-gray-500">LEGACY ADMIN</span>
                             {% else %}
                                 <span class="px-4 py-1.5 inline-flex text-[9px] font-black uppercase rounded-xl bg-gray-100 text-gray-600 border border-gray-200">LEVEL 3: USER</span>
                             {% endif %}
@@ -137,22 +137,8 @@
                                      class="absolute right-8 mt-2 w-56 rounded-3xl shadow-2xl bg-white ring-1 ring-black ring-opacity-5 z-[50] divide-y divide-gray-50 overflow-hidden border border-gray-100 text-left">
                                     <div class="py-2">
                                         {% if current_user.level == 1 %}
-                                            {% if user.level > 2 %}
-                                            <form action="{{ url_for('admin_dashboard.update_user_role', user_id=user.id) }}" method="POST" onsubmit="return confirm('Promote to Moderator (Level 2)?');">
-                                                <input type="hidden" name="level" value="2">
-                                                <button type="submit" class="group flex items-center w-full px-5 py-4 text-[11px] font-black uppercase tracking-wider text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition">
-                                                    <i class="fas fa-crown mr-3 text-purple-400 group-hover:text-purple-600"></i>
-                                                    Set as Admin
-                                                </button>
-                                            </form>
-                                            {% elif user.level == 2 %}
-                                            <form action="{{ url_for('admin_dashboard.update_user_role', user_id=user.id) }}" method="POST" onsubmit="return confirm('Demote to Member (Level 3)?');">
-                                                <input type="hidden" name="level" value="3">
-                                                <button type="submit" class="group flex items-center w-full px-5 py-4 text-[11px] font-black uppercase tracking-wider text-gray-700 hover:bg-gray-50 transition">
-                                                    <i class="fas fa-user-minus mr-3 text-gray-400 group-hover:text-gray-600"></i>
-                                                    Remove Admin
-                                                </button>
-                                            </form>
+                                            {% if user.level > 1 %}
+                                            {# Removed promote to moderator logic #}
                                             {% endif %}
                                         {% endif %}
                                         
@@ -269,7 +255,6 @@
                 <label class="block text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1">Assign Permission Level</label>
                 <select name="level" class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-orange-500 transition outline-none cursor-pointer">
                     <option value="3" selected>Cấp 3: Regular User</option>
-                    <option value="2">Cấp 2: Moderator (Admin)</option>
                 </select>
             </div>
             <div class="pt-4">
@@ -393,8 +378,8 @@
             badge.innerText = 'LEVEL 1: OWNER'; 
             badge.className = 'absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-2xl bg-red-950 text-[10px] font-black text-red-400 uppercase tracking-[0.2em] shadow-xl border border-red-900';
         } else if (level == '2') {
-            badge.innerText = 'LEVEL 2: ADMIN'; 
-            badge.className = 'absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-2xl bg-purple-900 text-[10px] font-black text-purple-200 uppercase tracking-[0.2em] shadow-xl border border-purple-800';
+            badge.innerText = 'LEGACY ADMIN'; 
+            badge.className = 'absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-2xl bg-gray-600 text-[10px] font-black text-gray-200 uppercase tracking-[0.2em] shadow-xl border border-gray-500';
         } else {
             badge.innerText = 'LEVEL 3: USER'; 
             badge.className = 'absolute -bottom-4 left-1/2 -translate-x-1/2 px-6 py-2 rounded-2xl bg-gray-800 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] shadow-xl border border-gray-700';

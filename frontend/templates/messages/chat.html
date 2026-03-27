@@ -136,6 +136,27 @@
         document.getElementById('modalImage').src = '';
     }
 
+    function escapeHTML(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function linkify(text) {
+        const escaped = escapeHTML(text);
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return escaped.replace(urlRegex, function(url) {
+            return '<a href="' + url + '" target="_blank" class="text-blue-200 underline hover:text-white break-all transition-colors font-bold">' + url + '</a>';
+        });
+    }
+
+    // Apply linkify to existing messages
+    document.querySelectorAll('.break-words').forEach(p => {
+        if (!p.closest('.max-w-\\[70\\%\\]').querySelector('img')) {
+            p.innerHTML = linkify(p.textContent);
+        }
+    });
+
     document.getElementById('imageModal').addEventListener('click', function (e) {
         if (e.target === this) {
             closeImageModal();
@@ -249,7 +270,7 @@
             const imgSrc = data.message.replace('[IMAGE]', '');
             contentHtml = `<img src="${imgSrc}" class="max-w-full rounded-md object-cover max-h-64 cursor-pointer shadow-sm transition-transform hover:scale-[1.02]" onclick="openImageModal(this.src)">`;
         } else {
-            contentHtml = `<p class="break-words">${data.message}</p>`;
+            contentHtml = `<p class="break-words">${linkify(data.message)}</p>`;
         }
 
         div.innerHTML = `
