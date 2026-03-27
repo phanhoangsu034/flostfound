@@ -60,7 +60,7 @@
                     <tr class="hover:bg-gray-50/50 transition-all duration-300 group cursor-pointer" 
                         data-actor="{{ log.user.username }}"
                         data-actor-email="{{ log.user.email }}"
-                        data-actor-role="{% if log.user.level == 1 %}Super Admin{% elif log.user.level == 2 %}Moderator{% else %}User{% endif %}"
+                        data-actor-role="{% if log.user.level == 1 %}Admin{% elif log.user.level == 2 %}Admin{% else %}User{% endif %}"
                         data-actor-avatar="{{ log.user.avatar }}"
                         data-action="{{ log.action }}"
                         data-details="{{ log.details }}"
@@ -78,7 +78,7 @@
                                 </div>
                                 <div>
                                     <span class="text-[11px] font-black text-gray-800 group-hover:text-orange-600 transition tracking-tight">{{ log.user.username }}</span>
-                                    <span class="block text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mt-1">{% if log.user.level == 1 %}S-Level{% elif log.user.level == 2 %}M-Level{% else %}U-Level{% endif %}</span>
+                                    <span class="block text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mt-1">{% if log.user.level == 1 %}Admin{% elif log.user.level == 2 %}Admin{% else %}User{% endif %}</span>
                                 </div>
                             </div>
                         </td>

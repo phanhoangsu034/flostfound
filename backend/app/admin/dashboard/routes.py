@@ -179,29 +179,24 @@ def delete_user(user_id):
         return redirect(url_for('admin_dashboard.admin_users'))
     
     username = user.username
+    email = user.email
     
-    # FIX: Manually delete related data to avoid IntegrityError (NOT NULL constraints)
-    from app.models.message import Message
-    from app.models.item import Item
-    
-    # 1. Delete all messages
-    Message.query.filter((Message.sender_id == user_id) | (Message.recipient_id == user_id)).delete()
-    
-    # 2. Delete all items
-    Item.query.filter_by(user_id=user_id).delete()
-    
-    # 3. Delete all action logs related to this user (as performer)
-    ActionLog.query.filter_by(user_id=user_id).delete()
-    
-    # 4. Log action (This log is by CURRENT ADMIN, so it's safe)
-    log = ActionLog(user_id=current_user.id, action="Xóa tài khoản vĩnh viễn", details=f"User: {username}, Email: {user.email}")
-    
-    # 5. Final delete user
-    db.session.delete(user)
-    db.session.add(log)
-    db.session.commit()
-    
-    flash(f"Đã xóa vĩnh viễn tài khoản {username} và tất cả dữ liệu liên quan.", "success")
+    try:
+        # Log action (This log is by CURRENT ADMIN, so it's safe)
+        log = ActionLog(user_id=current_user.id, action="Xóa tài khoản vĩnh viễn", details=f"User: {username}, Email: {email}")
+        
+        # db.session.delete(user) will now safely cascade and delete all associated User items, comments, messages, likes, and notifications.
+        db.session.delete(user)
+        db.session.add(log)
+        db.session.commit()
+        
+        flash(f"Đã xóa vĩnh viễn tài khoản {username} và tất cả dữ liệu liên quan.", "success")
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        flash(f"Lỗi khi xóa tài khoản: {str(e)}", "danger")
+        
     return redirect(url_for('admin_dashboard.admin_users'))
 
 @bp.route('/admin/users/create', methods=['POST'])

@@ -30,7 +30,8 @@ def post_item():
         desc = request.form.get('description')
         location = request.form.get('location')
         specific_location = request.form.get('specific_location')
-        category = request.form.get('category')
+        categories_list = request.form.getlist('category')
+        category = categories_list[0] if categories_list else request.form.get('category')
         itype = request.form.get('item_type')
         phone_number = request.form.get('phone_number')
         facebook_url = request.form.get('facebook_url')
@@ -68,6 +69,16 @@ def post_item():
             phone_number=phone_number, facebook_url=facebook_url,
             incident_date=incident_date, user_id=current_user.id
         )
+        
+        from app.models.category import Category
+        if categories_list:
+            for cat_name in categories_list:
+                cat_obj = Category.query.filter_by(name=cat_name).first()
+                if not cat_obj:
+                    cat_obj = Category(name=cat_name)
+                    db.session.add(cat_obj)
+                new_item.categories.append(cat_obj)
+
         db.session.add(new_item)
         db.session.commit() # Commit to get ID
         

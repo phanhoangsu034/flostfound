@@ -49,26 +49,33 @@
                             đề tin</label>
                     </div>
 
-                    <div class="relative">
-                        <select id="category" name="category"
-                            class="block rounded-lg px-2.5 pb-2.5 pt-5 w-full text-sm text-gray-900 bg-gray-50 border border-gray-300 appearance-none focus:outline-none focus:ring-0 focus:border-orange-600 peer"
-                            required>
-                            <option value="Ví tiền" {% if item.category=='Ví tiền' %}selected{% endif %}>Ví tiền
-                            </option>
-                            <option value="Giấy tờ" {% if item.category=='Giấy tờ' %}selected{% endif %}>Giấy tờ tùy
-                                thân</option>
-                            <option value="Điện thoại" {% if item.category=='Điện thoại' %}selected{% endif %}>Điện
-                                thoại</option>
-                            <option value="Laptop" {% if item.category=='Laptop' %}selected{% endif %}>Laptop</option>
-                            <option value="Chìa khóa" {% if item.category=='Chìa khóa' %}selected{% endif %}>Chìa khóa
-                            </option>
-                            <option value="Trang phục" {% if item.category=='Trang phục' %}selected{% endif %}>Trang
-                                phục/Phụ kiện</option>
-                            <option value="Khác" {% if item.category=='Khác' %}selected{% endif %}>Khác</option>
-                        </select>
-                        <label for="category"
-                            class="absolute text-sm text-gray-500 duration-300 transform -translate-y-4 scale-75 top-4 z-10 origin-[0] left-2.5 peer-focus:text-orange-600 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-4">Danh
-                            mục</label>
+                    <!-- Category Tags -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Danh mục</label>
+                        <div class="flex flex-wrap gap-2" id="category_container">
+                            {% set cats = ['Ví tiền', 'Giấy tờ', 'Điện thoại', 'Laptop', 'Chìa khóa', 'Trang phục', 'Khác'] %}
+                            {% set current_cats = [] %}
+                            {% if item %}
+                                {% if item.categories %}
+                                    {% for c in item.categories %}
+                                        {% set _ = current_cats.append(c.name) %}
+                                    {% endfor %}
+                                {% elif item.category %}
+                                    {% set _ = current_cats.append(item.category) %}
+                                {% endif %}
+                            {% endif %}
+                            
+                            {% for cat in cats %}
+                            <label class="cursor-pointer">
+                                <input type="checkbox" name="category" value="{{ cat }}" class="peer sr-only" onchange="clearCategoryError()" 
+                                    {% if cat in current_cats %}checked{% endif %}>
+                                <div class="px-3 py-1.5 rounded-full border border-gray-300 text-sm peer-checked:bg-orange-600 peer-checked:text-white peer-checked:border-orange-600 transition text-gray-700 hover:bg-gray-50">
+                                    {{ cat }}
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <p id="error-category" class="hidden text-red-500 text-xs mt-1">Vui lòng chọn ít nhất một danh mục</p>
                     </div>
                 </div>
 
@@ -324,6 +331,21 @@
         });
     }
 
+    function clearCategoryError() {
+        const errorMsg = document.getElementById('error-category');
+        if (errorMsg) {
+            errorMsg.classList.add('hidden');
+        }
+    }
+
+    function showCategoryError(message) {
+        const errorMsg = document.getElementById('error-category');
+        if (errorMsg) {
+            errorMsg.textContent = message;
+            errorMsg.classList.remove('hidden');
+        }
+    }
+
     function showError(inputId, message) {
         const errorMsg = document.getElementById(`error-${inputId}`);
         const input = document.getElementById(inputId);
@@ -350,10 +372,10 @@
             isValid = false;
         }
 
-        const category = document.getElementById('category');
-        if (!category.value) {
-            showError('category', 'Trường này không được để trống');
-            if (!firstErrorId) firstErrorId = 'category';
+        const categoryCheckboxes = document.querySelectorAll('input[name="category"]:checked');
+        if (categoryCheckboxes.length === 0) {
+            showCategoryError('Vui lòng chọn ít nhất một danh mục');
+            if (!firstErrorId) firstErrorId = 'category_container';
             isValid = false;
         }
 
