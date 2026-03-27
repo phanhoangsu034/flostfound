@@ -169,6 +169,10 @@
         const message = input.value.trim();
 
         if (message) {
+            if (message.length > 1500) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Tin nhắn không được dài quá 1500 ký tự!', showConfirmButton: false, timer: 3000 });
+                return;
+            }
             socket.emit('send_message', {
                 recipient_id: recipientId,
                 message: message
@@ -182,10 +186,15 @@
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        // Bỏ validation khắt khe, chỉ cần bắt đầu bằng image/ (hỗ trợ mọi loại ảnh)
+        // Kiểm tra dung lượng và kiểu tệp
         for (let i = 0; i < files.length; i++) {
             if (!files[i].type.startsWith('image/')) {
-                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Vui lòng chỉ chọn file ảnh', showConfirmButton: false, timer: 3000 });
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Vui lòng chỉ chọn tệp Ảnh!', showConfirmButton: false, timer: 3000 });
+                e.target.value = '';
+                return;
+            }
+            if (files[i].size > 5 * 1024 * 1024) { // 5MB
+                Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: `Ảnh nặng hơn 5MB. Vui lòng chọn ảnh khác!`, showConfirmButton: false, timer: 4000 });
                 e.target.value = '';
                 return;
             }
@@ -229,7 +238,8 @@
             }
         } catch (error) {
             console.error("Lỗi Upload Ảnh:", error);
-            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Tải ảnh thất bại', showConfirmButton: false, timer: 3000 });
+            // Hiển thị nội dung lỗi được trả về từ phía server nếu có
+            Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: error.message || 'Tải ảnh thất bại', showConfirmButton: false, timer: 3000 });
         } finally {
             Swal.close();
             e.target.value = ''; // Reset input
