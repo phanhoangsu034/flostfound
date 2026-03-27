@@ -570,15 +570,40 @@ def unban_user(user_id):
 @login_required
 @admin_required
 def force_delete_user(user_id):
+    from app.models.comment import Comment
+    from app.models.like import Like
+    from app.models.message import Message
+    from app.models.notification import Notification
+    from app.models.user_preference import MutedItem, BlockedUser
+    from app.models.item import Item
+    from app.models.report import Report
+    
     user = User.query.get_or_404(user_id)
     
     if current_user.level >= user.level:
         flash('Bạn không có quyền xóa người cùng cấp hoặc cấp cao hơn.', 'danger')
         return redirect(url_for('admin_users'))
     
-    db.session.delete(user)
-    db.session.commit()
-    flash(f'Đã xóa tài khoản {user.username}.', 'success')
+    username = user.username
+    
+    try:
+        # Delete all related data in order of dependencies
+        Comment.query.filter_by(user_id=user_id).delete()
+        Like.query.filter_by(user_id=user_id).delete()
+        Message.query.filter((Message.sender_id == user_id) | (Message.recipient_id == user_id)).delete()
+        Notification.query.filter((Notification.recipient_id == user_id) | (Notification.actor_id == user_id)).delete()
+        MutedItem.query.filter_by(user_id=user_id).delete()
+        BlockedUser.query.filter((BlockedUser.user_id == user_id) | (BlockedUser.blocked_user_id == user_id)).delete()
+        Report.query.filter_by(reporter_id=user_id).delete()
+        Item.query.filter_by(user_id=user_id).delete()
+        
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'Đã xóa vĩnh viễn tài khoản {username} và dữ liệu liên quan.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Lỗi khi xóa tài khoản: {str(e)}', 'danger')
+    
     return redirect(url_for('admin_users'))
 
 # Static Pages

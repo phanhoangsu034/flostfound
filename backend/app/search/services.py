@@ -5,8 +5,11 @@ Handles fuzzy matching, synonym expansion, filtering, sorting, and pagination.
 from difflib import SequenceMatcher
 import unicodedata
 from datetime import datetime, timedelta
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, desc
 from app.models.item import Item
+from app.models.like import Like
+from app.models.comment import Comment
+from app.extensions import db
 from app.search.synonyms import expand_query
 
 
@@ -161,6 +164,13 @@ def search_items(
             scored.sort(key=lambda x: x[0].date_posted)
         elif sort == "relevance":
             scored.sort(key=lambda x: x[1], reverse=True)
+        elif sort == "popular":
+            # Sort by total interactions (likes + comments) descending
+            def _interaction_count(item):
+                lc = item.likes.count() if hasattr(item, 'likes') else 0
+                cc = item.comments.count() if hasattr(item, 'comments') else 0
+                return lc + cc
+            scored.sort(key=lambda x: _interaction_count(x[0]), reverse=True)
         else:  # newest (default)
             scored.sort(key=lambda x: x[0].date_posted, reverse=True)
 
@@ -173,6 +183,25 @@ def search_items(
         # No text query – just filters + sort
         if sort == "oldest":
             q = q.order_by(Item.date_posted.asc())
+        elif sort == "popular":
+            # Subquery: count likes per item
+            like_count = (
+                db.session.query(Like.item_id, func.count(Like.id).label('lc'))
+                .group_by(Like.item_id).subquery()
+            )
+            # Subquery: count comments per item
+            comment_count = (
+                db.session.query(Comment.item_id, func.count(Comment.id).label('cc'))
+                .group_by(Comment.item_id).subquery()
+            )
+            q = (
+                q.outerjoin(like_count, Item.id == like_count.c.item_id)
+                .outerjoin(comment_count, Item.id == comment_count.c.item_id)
+                .order_by(
+                    desc(func.coalesce(like_count.c.lc, 0) + func.coalesce(comment_count.c.cc, 0)),
+                    Item.date_posted.desc()
+                )
+            )
         else:
             q = q.order_by(Item.date_posted.desc())
 
@@ -273,20 +302,32 @@ def get_locations_hierarchy():
 
 
 def get_categories():
-    """Return list of category names."""
+    """Return list of category names ensuring standard ones are present."""
     from app.models.category import Category
-    cats = Category.query.order_by(Category.name).all()
-    if cats:
-        return [c.name for c in cats]
     
-    # Fallback to standard categories if DB is empty
-    return [
-        "Ví / Bóp",
+    # Danh sách chuẩn khớp với frontend
+    standard_cats = [
+        "Ví tiền",
+        "Giấy tờ",
+        "Điện thoại",
+        "Laptop",
         "Chìa khóa",
-        "Thẻ xe / Thẻ sinh viên",
-        "Giấy tờ tùy thân",
-        "Điện thoại / Laptop",
-        "Đồ dùng học tập / Sách vở",
-        "Quần áo / Phụ kiện",
+        "Trang phục",
         "Khác"
     ]
+    
+    # Cố gắng lấy từ DB để có thể có các category người dùng đã tạo thêm tự động
+    db_cats = []
+    try:
+        cats = Category.query.all()
+        db_cats = [c.name for c in cats]
+    except Exception:
+        pass
+        
+    # Gộp danh sách chuẩn và DB, giữ thứ tự chuẩn lên trước
+    merged_cats = standard_cats.copy()
+    for cat in db_cats:
+        if cat not in merged_cats:
+            merged_cats.append(cat)
+            
+    return merged_cats

@@ -27,6 +27,10 @@ def update_status(item_id):
     data = request.json
     if data and 'status' in data:
         item.status = data['status']
+        if item.status == 'Closed':
+            from datetime import datetime, timedelta
+            item.expires_at = datetime.utcnow() + timedelta(days=5)
+            
         db.session.commit()
         return jsonify({'success': True, 'message': 'Cập nhật trạng thái thành công'})
     return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'}), 400
@@ -81,6 +85,11 @@ def edit_item(item_id):
         item.facebook_url = facebook_url
         item.status = status
         
+        # Auto-expiry: If post is edited and marked as closed, set expiry to +5 days
+        if status == 'Closed':
+            from datetime import datetime, timedelta
+            item.expires_at = datetime.utcnow() + timedelta(days=5)
+            
         from app.models.category import Category
         if categories_list:
             item.categories.clear()

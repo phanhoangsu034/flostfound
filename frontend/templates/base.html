@@ -1,874 +1,871 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>F-LostFound - Tìm Đồ Thất Lạc</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class'
-        }
-    </script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>F-LostFound - Tìm Đồ Thất Lạc</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+    };
+  </script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- Dark Mode Init Script (prevent flicker) -->
-    <script>
-        // Force light mode on first visit, or use saved preference
-        if (localStorage.getItem('color-theme') === 'dark') {
-            document.documentElement.classList.add('dark');
+  <!-- Dark Mode Init Script (prevent flicker) -->
+  <script>
+    // Force light mode on first visit, or use saved preference
+    if (localStorage.getItem("color-theme") === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("color-theme", "light");
+    }
+  </script>
+  {% block social_meta %}{% endblock %}
+
+  <!-- Firebase SDK (Web Push Notifications) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+
+    // ============================================================
+    // ⚙️ CẤU HÌNH FIREBASE - Thay bằng config của bạn
+    // Lấy từ: Firebase Console → Project Settings → Your apps
+    // ============================================================
+    const FIREBASE_CONFIG = {
+      apiKey: "REPLACE_WITH_YOUR_API_KEY",
+      authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+      projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+      storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+      messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+      appId: "REPLACE_WITH_YOUR_APP_ID"
+    };
+
+    // VAPID Key - Lấy từ: Firebase Console → Cloud Messaging → Web Push certificates
+    const VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+
+    // Chỉ khởi động FCM nếu user đã đăng nhập
+    {% if current_user.is_authenticated %}
+    (async function initFCM() {
+      // Kiểm tra browser có hỗ trợ không
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+        console.log('[FCM] Browser không hỗ trợ Web Push');
+        return;
+      }
+
+      try {
+        const app = initializeApp(FIREBASE_CONFIG);
+        const messaging = getMessaging(app);
+
+        // Đăng ký Service Worker
+        const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/'
+        });
+        console.log('[FCM] Service Worker đã đăng ký:', swRegistration.scope);
+
+        // Kiểm tra quyền hiện tại
+        const currentPermission = Notification.permission;
+
+        if (currentPermission === 'denied') {
+          console.log('[FCM] Người dùng đã từ chối quyền notification');
+          return;
+        }
+
+        if (currentPermission === 'default') {
+          // Xin quyền lần đầu - hiển thị UI thân thiện
+          showPermissionPrompt(messaging, VAPID_KEY);
         } else {
-            document.documentElement.classList.remove('dark');
-            localStorage.setItem('color-theme', 'light');
+          // Đã có quyền → lấy token ngay
+          await registerFCMToken(messaging, VAPID_KEY);
         }
-    </script>
-    {% block social_meta %}{% endblock %}
 
-    <!-- Firebase SDK (Web Push Notifications) -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        // Xử lý Foreground notifications (khi đang mở tab)
+        onMessage(messaging, (payload) => {
+          console.log('[FCM] Foreground message:', payload);
+          // Foreground đã được xử lý bởi Socket.IO toast
+          // FCM foreground chỉ log, không hiện lại toast
+        });
 
-        // ============================================================
-        // ⚙️ CẤU HÌNH FIREBASE - Thay bằng config của bạn
-        // Lấy từ: Firebase Console → Project Settings → Your apps
-        // ============================================================
-        const FIREBASE_CONFIG = {
-            apiKey: "REPLACE_WITH_YOUR_API_KEY",
-            authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
-            projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-            storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
-            messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
-            appId: "REPLACE_WITH_YOUR_APP_ID"
-        };
+      } catch (error) {
+        console.error('[FCM] Lỗi khởi tạo:', error);
+      }
+    })();
 
-        // VAPID Key - Lấy từ: Firebase Console → Cloud Messaging → Web Push certificates
-        const VAPID_KEY = "REPLACE_WITH_YOUR_VAPID_KEY";
+    async function registerFCMToken(messaging, vapidKey) {
+      try {
+        const token = await getToken(messaging, { vapidKey: vapidKey });
+        if (!token) {
+          console.warn('[FCM] Không lấy được token');
+          return;
+        }
 
-        // Chỉ khởi động FCM nếu user đã đăng nhập
-        {% if current_user.is_authenticated %}
-        (async function initFCM() {
-            // Kiểm tra browser có hỗ trợ không
-            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                console.log('[FCM] Browser không hỗ trợ Web Push');
-                return;
+        console.log('[FCM] Token lấy thành công:', token.substring(0, 20) + '...');
+
+        // Gửi token về server để lưu
+        const response = await fetch('/save-fcm-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token })
+        });
+
+        if (response.ok) {
+          console.log('[FCM] ✅ Token đã được lưu lên server');
+          // Lưu token local để cleanup khi logout
+          localStorage.setItem('fcm_token', token);
+        }
+      } catch (error) {
+        console.error('[FCM] Lỗi lấy token:', error);
+      }
+    }
+
+    function showPermissionPrompt(messaging, vapidKey) {
+      // Hiện sau 3 giây để tránh quá đột ngột
+      setTimeout(() => {
+        Swal.fire({
+          title: '🔔 Bật thông báo',
+          html: `
+            <div style="text-align:left;padding:8px 0">
+              <p style="margin-bottom:12px;color:#555">Bật thông báo đẩy để không bỏ lỡ:</p>
+              <ul style="list-style:none;padding:0;">
+                <li style="padding:6px 0">💬 Tin nhắn mới</li>
+                <li style="padding:6px 0">📞 Cuộc gọi đến</li>
+                <li style="padding:6px 0">🎯 Đồ vật được tìm thấy</li>
+              </ul>
+              <p style="color:#888;font-size:13px;margin-top:12px">Thông báo sẽ hiện ngay cả khi bạn đóng tab!</p>
+            </div>`,
+          icon: 'info',
+          showCancelButton: true,
+          confirmButtonText: '✅ Cho phép',
+          cancelButtonText: '❌ Để sau',
+          confirmButtonColor: '#ea580c',
+          cancelButtonColor: '#6b7280',
+          reverseButtons: false
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+              console.log('[FCM] ✅ Quyền được cấp!');
+              await registerFCMToken(messaging, vapidKey);
+            } else {
+              console.log('[FCM] ❌ Quyền bị từ chối');
             }
+          }
+        });
+      }, 3000);
+    }
+    {% endif %}
+  </script>
 
-            try {
-                const app = initializeApp(FIREBASE_CONFIG);
-                const messaging = getMessaging(app);
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f6f9;
+      /* Softer, cooler light gray */
+      color: #334155;
+      /* slate-700 */
+    }
 
-                // Đăng ký Service Worker
-                const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-                    scope: '/'
-                });
-                console.log('[FCM] Service Worker đã đăng ký:', swRegistration.scope);
+    .glass-header {
+      background: rgba(252, 253, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
 
-                // Kiểm tra quyền hiện tại
-                const currentPermission = Notification.permission;
+    /* Hover dropdown – stays open while cursor is over the group */
+    .dropdown-group:hover .dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
 
-                if (currentPermission === 'denied') {
-                    console.log('[FCM] Người dùng đã từ chối quyền notification');
-                    return;
-                }
+    /* Mobile menu animation */
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
 
-                if (currentPermission === 'default') {
-                    // Xin quyền lần đầu - hiển thị UI thân thiện
-                    showPermissionPrompt(messaging, VAPID_KEY);
-                } else {
-                    // Đã có quyền → lấy token ngay
-                    await registerFCMToken(messaging, VAPID_KEY);
-                }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
-                // Xử lý Foreground notifications (khi đang mở tab)
-                onMessage(messaging, (payload) => {
-                    console.log('[FCM] Foreground message:', payload);
-                    // Foreground đã được xử lý bởi Socket.IO toast
-                    // FCM foreground chỉ log, không hiện lại toast
-                });
+    .animate-slide-down {
+      animation: slideDown 0.3s ease-out forwards;
+    }
 
-            } catch (error) {
-                console.error('[FCM] Lỗi khởi tạo:', error);
-            }
-        })();
+    /* Hide default browser revealing passwords tools */
+    input::-ms-reveal,
+    input::-ms-clear {
+      display: none;
+    }
 
-        async function registerFCMToken(messaging, vapidKey) {
-            try {
-                const token = await getToken(messaging, { vapidKey: vapidKey });
-                if (!token) {
-                    console.warn('[FCM] Không lấy được token');
-                    return;
-                }
-
-                console.log('[FCM] Token lấy thành công:', token.substring(0, 20) + '...');
-
-                // Gửi token về server để lưu
-                const response = await fetch('/save-fcm-token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token })
-                });
-
-                if (response.ok) {
-                    console.log('[FCM] ✅ Token đã được lưu lên server');
-                    // Lưu token local để cleanup khi logout
-                    localStorage.setItem('fcm_token', token);
-                }
-            } catch (error) {
-                console.error('[FCM] Lỗi lấy token:', error);
-            }
-        }
-
-        function showPermissionPrompt(messaging, vapidKey) {
-            // Hiện sau 3 giây để tránh quá đột ngột
-            setTimeout(() => {
-                Swal.fire({
-                    title: '🔔 Bật thông báo',
-                    html: `
-              <div style="text-align:left;padding:8px 0">
-                <p style="margin-bottom:12px;color:#555">Bật thông báo đẩy để không bỏ lỡ:</p>
-                <ul style="list-style:none;padding:0;">
-                  <li style="padding:6px 0">💬 Tin nhắn mới</li>
-                  <li style="padding:6px 0">📞 Cuộc gọi đến</li>
-                  <li style="padding:6px 0">🎯 Đồ vật được tìm thấy</li>
-                </ul>
-                <p style="color:#888;font-size:13px;margin-top:12px">Thông báo sẽ hiện ngay cả khi bạn đóng tab!</p>
-              </div>`,
-                    icon: 'info',
-                    showCancelButton: true,
-                    confirmButtonText: '✅ Cho phép',
-                    cancelButtonText: '❌ Để sau',
-                    confirmButtonColor: '#ea580c',
-                    cancelButtonColor: '#6b7280',
-                    reverseButtons: false
-                }).then(async (result) => {
-                    if (result.isConfirmed) {
-                        const permission = await Notification.requestPermission();
-                        if (permission === 'granted') {
-                            console.log('[FCM] ✅ Quyền được cấp!');
-                            await registerFCMToken(messaging, vapidKey);
-                        } else {
-                            console.log('[FCM] ❌ Quyền bị từ chối');
-                        }
-                    }
-                });
-            }, 3000);
-        }
-        {% endif %}
-    </script>
-
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f6f9;
-            /* Softer, cooler light gray */
-            color: #334155;
-            /* slate-700 */
-        }
-
-        .glass-header {
-            background: rgba(252, 253, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-        }
-
-        /* Hover dropdown – stays open while cursor is over the group */
-        .dropdown-group:hover .dropdown-menu {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        /* Mobile menu animation */
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .animate-slide-down {
-            animation: slideDown 0.3s ease-out forwards;
-        }
-
-        /* Hide default browser revealing passwords tools */
-        input::-ms-reveal,
-        input::-ms-clear {
-            display: none;
-        }
-
-        input::-webkit-contacts-auto-fill-button,
-        input::-webkit-credentials-auto-fill-button {
-            display: none !important;
-            visibility: hidden;
-            pointer-events: none;
-            position: absolute;
-            right: 0;
-        }
-    </style>
-
+    input::-webkit-contacts-auto-fill-button,
+    input::-webkit-credentials-auto-fill-button {
+      display: none !important;
+      visibility: hidden;
+      pointer-events: none;
+      position: absolute;
+      right: 0;
+    }
+  </style>
 </head>
 
 <body class="text-slate-700 flex flex-col min-h-screen dark:bg-gray-900 transition-colors duration-300"
-    data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% endif %}">
-
-    <nav
-        class="glass-header dark:bg-gray-900/95 dark:border-gray-800 fixed w-full z-40 top-0 transition-colors duration-300">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-
-                <!-- Brand -->
-                <div class="flex items-center">
-                    <a href="{{ url_for('posts_view.index') }}" class="flex-shrink-0 flex items-center">
-                        <span
-                            class="text-xl md:text-2xl font-bold text-orange-600 dark:text-orange-500">F-LostFound</span>
-                    </a>
-                </div>
-
-                <!-- Desktop Links & Buttons -->
-                <div class="hidden md:flex items-center space-x-2">
-                    <a href="{{ url_for('posts_view.index') }}"
-                        class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Trang
-                        Chủ</a>
-                    <a href="{{ url_for('profile.about') }}"
-                        class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Giới
-                        Thiệu</a>
-                    <a href="{{ url_for('profile.guide') }}"
-                        class="text-slate-600 hover:text-orange-600 dark:text-gray-300 dark:hover:text-amber-400 px-3 py-2 rounded-md font-medium text-sm transition-colors">Hướng
-                        Dẫn</a>
-
-                    <!-- Dark Mode Toggle Desktop -->
-                    <button id="theme-toggle" type="button"
-                        class="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-amber-400 px-3 py-2 rounded-lg text-sm transition focus:outline-none transform hover:scale-110">
-                        <i id="theme-toggle-dark-icon" class="fas fa-moon hidden text-lg"></i>
-                        <i id="theme-toggle-light-icon" class="fas fa-sun hidden text-lg"></i>
-                    </button>
-
-                    {% if current_user.is_authenticated %}
-                    <button type="button" onclick="openCreateModal()"
-                        class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition font-bold text-sm shadow hover:shadow-md ml-2">
-                        <i class="fas fa-plus mr-1"></i>Đăng Tin
-                    </button>
-
-                    <!-- Messenger Icon -->
-                    <a href="{{ url_for('messages_inbox.messages_inbox') }}"
-                        class="relative text-gray-600 hover:text-blue-600 px-2 py-2 ml-2 transition">
-                        <i class="fab fa-facebook-messenger text-xl"></i>
-                        <span id="nav-msg-badge"
-                            class="{% if unread_msg_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
-                            {% if unread_msg_count > 0 %}{{ unread_msg_count }}{% else %}!{% endif %}
-                        </span>
-                    </a>
-
-                    <!-- Notification Bell -->
-                    <div class="relative ml-2">
-                        <button type="button" onclick="toggleNotifDropdown(event)" id="notifDropdownBtn"
-                            class="relative text-gray-600 hover:text-orange-600 px-2 py-2 transition focus:outline-none">
-                            <i class="fas fa-bell text-xl"></i>
-                            <span id="nav-notif-badge"
-                                class="{% if unread_notif_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
-                                {{ unread_notif_count }}
-                            </span>
-                        </button>
-                    </div>
-
-                    <div class="relative dropdown-group ml-2">
-                        <button type="button"
-                            class="flex items-center gap-2 text-gray-700 hover:text-orange-600 px-2 py-2 rounded-md font-medium text-sm transition">
-                            <img src="{{ current_user.avatar }}" class="w-8 h-8 rounded-full border-2 border-orange-300"
-                                alt="Avatar">
-                            <span class="max-w-[80px] truncate">{{ current_user.username }}</span>
-                            <i class="fas fa-chevron-down text-[10px]"></i>
-                        </button>
-                        <div
-                            class="dropdown-menu absolute right-0 top-full pt-2 w-48 opacity-0 invisible transition-all z-50">
-                            <div class="bg-white rounded-xl shadow-xl border border-gray-100 py-1">
-                                <a href="{{ url_for('profile.profile') }}"
-                                    class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Hồ Sơ</a>
-                                <a href="{{ url_for('profile.activity') }}"
-                                    class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt
-                                    Động</a>
-
-                                {% if current_user.level == 1 %}
-                                <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
-                                    class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
-                                {% endif %}
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <a href="{{ url_for('auth_logout.logout') }}"
-                                    class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-red-50">Đăng Xuất</a>
-                            </div>
-                        </div>
-                    </div>
-                    {% else %}
-                    <a href="{{ url_for('auth_login.login') }}"
-                        class="text-gray-700 hover:text-orange-600 px-3 py-2 text-sm font-medium">Đăng Nhập</a>
-                    <a href="{{ url_for('auth_register.register') }}"
-                        class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium ml-2">Đăng Ký</a>
-                    {% endif %}
-                </div>
-
-                <!-- Mobile Menu Button & Icons -->
-                <div class="flex md:hidden items-center space-x-4">
-                    {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('messages_inbox.messages_inbox') }}" class="relative text-gray-600 mr-2">
-                        <i class="fab fa-facebook-messenger text-xl"></i>
-                        <span id="nav-msg-badge-mobile"
-                            class="{% if unread_msg_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
-                            {{ unread_msg_count }}
-                        </span>
-                    </a>
-                    <button type="button" onclick="toggleNotifDropdown(event)" class="relative text-gray-600 focus:outline-none">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span id="nav-notif-badge-mobile"
-                            class="{% if unread_notif_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
-                            {{ unread_notif_count }}
-                        </span>
-                    </button>
-                    {% endif %}
-
-                    <!-- Dark Mode Toggle Mobile -->
-                    <button id="theme-toggle-mobile" type="button"
-                        class="text-gray-600 hover:text-orange-600 dark:text-gray-400 focus:outline-none">
-                        <i class="fas fa-adjust text-xl"></i>
-                    </button>
-
-                    <button type="button" onclick="toggleMobileMenu()"
-                        class="text-gray-600 hover:text-orange-600 focus:outline-none transform active:scale-95 transition">
-                        <i id="mobile-menu-icon" class="fas fa-bars text-2xl"></i>
-                    </button>
-                </div>
-
-            </div>
+  data-user-id="{% if current_user.is_authenticated %}{{ current_user.id }}{% endif %}">
+  <nav
+    class="glass-header dark:bg-gray-900/95 dark:border-gray-800 fixed w-full z-40 top-0 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16">
+        <!-- Brand -->
+        <div class="flex items-center">
+          <a href="{{ url_for('posts_view.index') }}" class="flex-shrink-0 flex items-center">
+            <span class="text-xl md:text-2xl font-bold text-orange-600 dark:text-orange-500">F-LostFound</span>
+          </a>
         </div>
 
-        <!-- Mobile Menu Panel -->
-        <div id="mobile-menu"
-            class="hidden md:hidden bg-white border-b border-gray-100 shadow-xl overflow-hidden animate-slide-down">
-            <div class="px-4 pt-2 pb-6 space-y-2">
-                <a href="{{ url_for('posts_view.index') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Trang
-                    Chủ</a>
-                <a href="{{ url_for('profile.about') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Giới
-                    Thiệu</a>
-                <a href="{{ url_for('profile.guide') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Hướng
-                    Dẫn</a>
+        <!-- Desktop Links & Buttons -->
+        <div class="hidden md:flex items-center space-x-2">
+          <a href="{{ url_for('posts_view.index') }}"
+            class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Trang
+            Chủ</a>
+          <a href="{{ url_for('profile.about') }}"
+            class="text-slate-600 hover:text-orange-600 px-3 py-2 rounded-md font-medium text-sm transition-colors">Giới
+            Thiệu</a>
+          <a href="{{ url_for('profile.guide') }}"
+            class="text-slate-600 hover:text-orange-600 dark:text-gray-300 dark:hover:text-amber-400 px-3 py-2 rounded-md font-medium text-sm transition-colors">Hướng
+            Dẫn</a>
 
-                {% if current_user.is_authenticated %}
-                <div class="border-t border-gray-100 my-2"></div>
-                <button onclick="openCreateModal(); toggleMobileMenu();"
-                    class="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-3 rounded-xl font-bold mb-4">
-                    <i class="fas fa-plus"></i> Đăng Tin
-                </button>
-                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">Tài Khoản</p>
+          <!-- Dark Mode Toggle Desktop -->
+          <button id="theme-toggle" type="button"
+            class="text-gray-500 hover:text-orange-600 dark:text-gray-400 dark:hover:text-amber-400 px-3 py-2 rounded-lg text-sm transition focus:outline-none transform hover:scale-110">
+            <i id="theme-toggle-dark-icon" class="fas fa-moon hidden text-lg"></i>
+            <i id="theme-toggle-light-icon" class="fas fa-sun hidden text-lg"></i>
+          </button>
+
+          {% if current_user.is_authenticated %}
+          <button type="button" onclick="openCreateModal()"
+            class="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition font-bold text-sm shadow hover:shadow-md ml-2">
+            <i class="fas fa-plus mr-1"></i>Đăng Tin
+          </button>
+
+          <!-- Notification Bell -->
+          <div class="relative ml-2">
+            <button type="button" onclick="toggleNotifDropdown(event)" id="notifDropdownBtn"
+              class="relative text-gray-600 hover:text-orange-600 px-2 py-2 transition focus:outline-none">
+              <i class="fas fa-bell text-xl"></i>
+              <span id="nav-notif-badge"
+                class="hidden absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
+                0
+              </span>
+            </button>
+          </div>
+
+          <div class="relative dropdown-group ml-2">
+            <button type="button"
+              class="flex items-center gap-2 text-gray-700 hover:text-orange-600 px-2 py-2 rounded-md font-medium text-sm transition">
+              <img src="{{ current_user.avatar }}" class="w-8 h-8 rounded-full border-2 border-orange-300"
+                alt="Avatar" />
+              <span class="max-w-[80px] truncate">{{ current_user.username }}</span>
+              <i class="fas fa-chevron-down text-[10px]"></i>
+            </button>
+            <div class="dropdown-menu absolute right-0 top-full pt-2 w-48 opacity-0 invisible transition-all z-50">
+              <div class="bg-white rounded-xl shadow-xl border border-gray-100 py-1">
                 <a href="{{ url_for('profile.profile') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Hồ Sơ</a>
+                  class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Hồ Sơ</a>
                 <a href="{{ url_for('profile.activity') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý
-                    Hoạt Động</a>
+                  class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt Động</a>
 
                 {% if current_user.level == 1 %}
                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin
-                    Panel</a>
+                  class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
                 {% endif %}
+                <div class="border-t border-gray-100 my-1"></div>
                 <a href="{{ url_for('auth_logout.logout') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-bold text-red-600 hover:bg-red-50">Đăng Xuất</a>
-                {% else %}
-                <div class="grid grid-cols-2 gap-3 pt-2">
-                    <a href="{{ url_for('auth_login.login') }}"
-                        class="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-bold">Đăng
-                        Nhập</a>
-                    <a href="{{ url_for('auth_register.register') }}"
-                        class="flex items-center justify-center px-4 py-3 bg-gray-800 text-white rounded-xl font-bold">Đăng
-                        Ký</a>
-                </div>
-                {% endif %}
+                  class="block px-4 py-2 text-sm text-red-600 font-bold hover:bg-red-50">Đăng Xuất</a>
+              </div>
             </div>
+          </div>
+          {% else %}
+          <a href="{{ url_for('auth_login.login') }}"
+            class="text-gray-700 hover:text-orange-600 px-3 py-2 text-sm font-medium">Đăng Nhập</a>
+          <a href="{{ url_for('auth_register.register') }}"
+            class="bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium ml-2">Đăng Ký</a>
+          {% endif %}
         </div>
-        
-        <!-- Shared Notification Dropdown Panel -->
-        <div id="notifDropdownPanel" class="hidden absolute right-4 sm:right-6 lg:right-8 top-16 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
-            <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
-                <h3 class="font-bold text-gray-800 text-base">Thông báo</h3>
-                <button onclick="markAllNotificationsRead(event)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Đánh dấu đã đọc tất cả</button>
-            </div>
-            <div id="notifList" class="max-h-[70vh] sm:max-h-[450px] overflow-y-auto w-full">
-                <div class="p-4 text-center text-gray-500 text-sm">
-                    <i class="fas fa-spinner fa-spin mr-2"></i> Đang tải...
-                </div>
-            </div>
-        </div>
-    </nav>
 
-    <!-- Toast Notifications -->
-    <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col space-y-4">
-        <!-- Audio for global notifications -->
-        <audio id="globalNotifSound" src="https://www.myinstants.com/media/sounds/discord-notification.mp3"
-            preload="auto"></audio>
-
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div
-            class="toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px]
-                    {% if category == 'success' %} bg-green-500 {% elif category == 'danger' %} bg-red-500 {% else %} bg-yellow-500 {% endif %}">
-            <i
-                class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} mr-3 text-xl"></i>
-            <span class="font-medium text-sm">{{ message }}</span>
-        </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
-    </div>
-
-    <!-- Floating Chat Bubble -->
-    {% if current_user.is_authenticated %}
-    <div class="fixed bottom-6 right-6 z-40">
-        <a href="{{ url_for('messages_inbox.messages_inbox') }}"
-            class="flex items-center justify-center w-14 h-14 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg transition transform hover:scale-110">
-            <i class="fas fa-comment-dots text-2xl"></i>
-            {% if unread_msg_count > 0 %}
-            <span id="bubble-badge"
-                class="absolute top-0 right-0 flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4">
-                {{ unread_msg_count }}
+        <!-- Mobile Menu Button & Icons -->
+        <div class="flex md:hidden items-center space-x-4">
+          {% if current_user.is_authenticated %}
+          <a href="{{ url_for('messages_inbox.messages_inbox') }}" class="relative text-gray-600 mr-2">
+            <i class="fab fa-facebook-messenger text-xl"></i>
+            <span id="nav-msg-badge-mobile"
+              class="{% if unread_msg_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
+              {{ unread_msg_count }}
             </span>
-            {% else %}
-            <span id="bubble-badge"
-                class="hidden absolute top-0 right-0 flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4"></span>
-            {% endif %}
-        </a>
-    </div>
-    {% endif %}
+          </a>
+          <button type="button" onclick="toggleNotifDropdown(event)" class="relative text-gray-600 focus:outline-none">
+            <i class="fas fa-bell text-xl"></i>
+            <span id="nav-notif-badge-mobile"
+              class="hidden absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
+              0
+            </span>
+          </button>
+          {% endif %}
 
-    <!-- Back to Top Button -->
-    <button id="backToTopBtn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})"
-        class="fixed bottom-24 right-6 z-40 hidden w-12 h-12 bg-gray-800 hover:bg-orange-600 text-white rounded-full shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-110 flex items-center justify-center opacity-0">
-        <i class="fas fa-chevron-up text-xl"></i>
-    </button>
+          <!-- Dark Mode Toggle Mobile -->
+          <button id="theme-toggle-mobile" type="button"
+            class="text-gray-600 hover:text-orange-600 dark:text-gray-400 focus:outline-none">
+            <i class="fas fa-adjust text-xl"></i>
+          </button>
 
-    <!-- Main Content -->
-    <main class="flex-grow container mx-auto px-4 pt-24 pb-12">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-gray-800 dark:bg-gray-950 text-gray-300 py-8 transition-colors duration-300">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <p class="text-sm font-bold text-orange-400">F-LostFound</p>
-                <div class="flex gap-6 text-sm">
-                    <a href="{{ url_for('posts_view.index') }}" class="hover:text-white transition">Trang Chủ</a>
-                    <a href="{{ url_for('profile.about') }}" class="hover:text-white transition">Giới Thiệu</a>
-                    <a href="{{ url_for('profile.guide') }}" class="hover:text-white transition">Hướng Dẫn</a>
-                </div>
-                <p class="text-xs text-gray-500">&copy; 2026 F-LostFound · FPT University Community</p>
-            </div>
+          <button type="button" onclick="toggleMobileMenu()"
+            class="text-gray-600 hover:text-orange-600 focus:outline-none transform active:scale-95 transition">
+            <i id="mobile-menu-icon" class="fas fa-bars text-2xl"></i>
+          </button>
         </div>
-    </footer>
+      </div>
+    </div>
 
-    {% include 'posts/create_modal.html' %}
-    {% include 'messages/webrtc_modals.html' %}
+    <!-- Mobile Menu Panel -->
+    <div id="mobile-menu"
+      class="hidden md:hidden bg-white border-b border-gray-100 shadow-xl overflow-hidden animate-slide-down">
+      <div class="px-4 pt-2 pb-6 space-y-2">
+        <a href="{{ url_for('posts_view.index') }}"
+          class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Trang
+          Chủ</a>
+        <a href="{{ url_for('profile.about') }}"
+          class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Giới
+          Thiệu</a>
+        <a href="{{ url_for('profile.guide') }}"
+          class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50 hover:text-orange-600">Hướng
+          Dẫn</a>
 
-    <script>
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobile-menu');
-            const icon = document.getElementById('mobile-menu-icon');
-            const isHidden = menu.classList.contains('hidden');
+        {% if current_user.is_authenticated %}
+        <div class="border-t border-gray-100 my-2"></div>
+        <button onclick="
+              openCreateModal();
+              toggleMobileMenu();
+            "
+          class="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-3 rounded-xl font-bold mb-4">
+          <i class="fas fa-plus"></i> Đăng Tin
+        </button>
+        <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">
+          Tài Khoản
+        </p>
+        <a href="{{ url_for('profile.profile') }}"
+          class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Hồ Sơ</a>
+        <a href="{{ url_for('profile.activity') }}"
+          class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý Hoạt
+          Động</a>
 
-            if (isHidden) {
-                menu.classList.remove('hidden');
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
-            } else {
-                menu.classList.add('hidden');
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
-            }
+        {% if current_user.level == 1 %}
+        <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
+          class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin Panel</a>
+        {% endif %}
+        <a href="{{ url_for('auth_logout.logout') }}"
+          class="block px-3 py-3 rounded-xl text-base font-bold text-red-600 hover:bg-red-50">Đăng Xuất</a>
+        {% else %}
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <a href="{{ url_for('auth_login.login') }}"
+            class="flex items-center justify-center px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-bold">Đăng
+            Nhập</a>
+          <a href="{{ url_for('auth_register.register') }}"
+            class="flex items-center justify-center px-4 py-3 bg-gray-800 text-white rounded-xl font-bold">Đăng Ký</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Shared Notification Dropdown Panel -->
+    <div id="notifDropdownPanel"
+      class="hidden absolute right-4 sm:right-6 lg:right-8 top-16 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
+      <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+        <h3 class="font-bold text-gray-800 text-base">Thông báo</h3>
+        <button onclick="markAllNotificationsRead(event)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+          Đánh dấu đã đọc tất cả
+        </button>
+      </div>
+      <div id="notifList" class="max-h-[70vh] sm:max-h-[450px] overflow-y-auto w-full">
+        <div class="p-4 text-center text-gray-500 text-sm">
+          <i class="fas fa-spinner fa-spin mr-2"></i> Đang tải...
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col space-y-4">
+    <!-- Audio for global notifications -->
+    <audio id="globalNotifSound" src="https://www.myinstants.com/media/sounds/discord-notification.mp3"
+      preload="auto"></audio>
+
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %} {% for category, message in messages %}
+    <div
+      class="toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] {% if category == 'success' %} bg-green-500 {% elif category == 'danger' %} bg-red-500 {% else %} bg-yellow-500 {% endif %}">
+      <i
+        class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %} mr-3 text-xl"></i>
+      <span class="font-medium text-sm">{{ message }}</span>
+    </div>
+    {% endfor %} {% endif %} {% endwith %}
+  </div>
+
+  <!-- Floating Chat Bubble -->
+  {% if current_user.is_authenticated %}
+  <div class="fixed bottom-6 right-6 z-40">
+    <a href="{{ url_for('messages_inbox.messages_inbox') }}"
+      class="flex items-center justify-center w-14 h-14 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg transition transform hover:scale-110">
+      <i class="fas fa-comment-dots text-2xl"></i>
+      {% if unread_msg_count > 0 %}
+      <span id="bubble-badge"
+        class="absolute top-0 right-0 flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4">
+        {{ unread_msg_count }}
+      </span>
+      {% else %}
+      <span id="bubble-badge"
+        class="hidden absolute top-0 right-0 flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4"></span>
+      {% endif %}
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Back to Top Button -->
+  <button id="backToTopBtn" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+    class="fixed bottom-24 right-6 z-40 hidden w-12 h-12 bg-gray-800 hover:bg-orange-600 text-white rounded-full shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-110 flex items-center justify-center opacity-0">
+    <i class="fas fa-chevron-up text-xl"></i>
+  </button>
+
+  <!-- Main Content -->
+  <main class="flex-grow container mx-auto px-4 pt-24 pb-12">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 dark:bg-gray-950 text-gray-300 py-8 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-sm font-bold text-orange-400">F-LostFound</p>
+        <div class="flex gap-6 text-sm">
+          <a href="{{ url_for('posts_view.index') }}" class="hover:text-white transition">Trang Chủ</a>
+          <a href="{{ url_for('profile.about') }}" class="hover:text-white transition">Giới Thiệu</a>
+          <a href="{{ url_for('profile.guide') }}" class="hover:text-white transition">Hướng Dẫn</a>
+        </div>
+        <p class="text-xs text-gray-500">
+          &copy; 2026 F-LostFound · FPT University Community
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  {% include 'posts/create_modal.html' %} {% include
+  'messages/webrtc_modals.html' %}
+
+  <script>
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      const icon = document.getElementById('mobile-menu-icon');
+      const isHidden = menu.classList.contains('hidden');
+
+      if (isHidden) {
+        menu.classList.remove('hidden');
+        icon.classList.remove('fa-bars');
+        icon.classList.add('fa-times');
+      } else {
+        menu.classList.add('hidden');
+        icon.classList.remove('fa-times');
+        icon.classList.add('fa-bars');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+
+      // Auto-dismiss toasts
+      // Auto-dismiss initial flash toasts
+      document.querySelectorAll('.toast-message').forEach(toast => {
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-x-full');
+          setTimeout(() => toast.remove(), 500);
+        }, 3500);
+      });
+
+      // Back to top & Navbar scroll behavior
+      window.addEventListener('scroll', () => {
+        const btn = document.getElementById('backToTopBtn');
+        if (window.scrollY > 300) {
+          btn.classList.remove('hidden');
+          // Add a tiny delay to allow CSS transition on opacity
+          setTimeout(() => btn.classList.remove('opacity-0'), 10);
+        } else {
+          btn.classList.add('opacity-0');
+          setTimeout(() => btn.classList.add('hidden'), 300);
+        }
+      });
+
+      // Global Toast Function
+      window.showToast = function (message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        let bgClass = type === 'success' ? 'bg-green-500' : (type === 'danger' || type === 'error' ? 'bg-red-500' : 'bg-blue-500');
+        let iconClass = type === 'success' ? 'fa-check-circle' : (type === 'danger' || type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+
+        toast.className = `toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] ${bgClass}`;
+        toast.innerHTML = `<i class="fas ${iconClass} mr-3 text-xl"></i><span class="font-medium text-sm">${message}</span>`;
+
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-x-full');
+          setTimeout(() => toast.remove(), 500);
+        }, 3500);
+      };
+
+      // Dark mode toggles
+      function toggleTheme() {
+        const darkIcon = document.getElementById('theme-toggle-dark-icon');
+        const lightIcon = document.getElementById('theme-toggle-light-icon');
+        if (darkIcon && lightIcon) {
+          darkIcon.classList.toggle('hidden');
+          lightIcon.classList.toggle('hidden');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('color-theme')) {
+          if (localStorage.getItem('color-theme') === 'light') {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+          }
+        } else {
+          if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.setItem('color-theme', 'light');
+          } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark');
+          }
+        }
+      }
 
-            // Auto-dismiss toasts
-            // Auto-dismiss initial flash toasts
-            document.querySelectorAll('.toast-message').forEach(toast => {
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'translate-x-full');
-                    setTimeout(() => toast.remove(), 500);
-                }, 3500);
-            });
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
 
-            // Back to top & Navbar scroll behavior
-            window.addEventListener('scroll', () => {
-                const btn = document.getElementById('backToTopBtn');
-                if (window.scrollY > 300) {
-                    btn.classList.remove('hidden');
-                    // Add a tiny delay to allow CSS transition on opacity
-                    setTimeout(() => btn.classList.remove('opacity-0'), 10);
-                } else {
-                    btn.classList.add('opacity-0');
-                    setTimeout(() => btn.classList.add('hidden'), 300);
-                }
-            });
+      if (themeToggleBtn) {
+        const darkIcon = document.getElementById('theme-toggle-dark-icon');
+        const lightIcon = document.getElementById('theme-toggle-light-icon');
+        if (document.documentElement.classList.contains('dark')) {
+          lightIcon.classList.remove('hidden');
+        } else {
+          darkIcon.classList.remove('hidden');
+        }
+        themeToggleBtn.addEventListener('click', toggleTheme);
+      }
+      if (themeToggleMobileBtn) {
+        themeToggleMobileBtn.addEventListener('click', toggleTheme);
+      }
 
-            // Global Toast Function
-            window.showToast = function (message, type = 'info') {
-                const container = document.getElementById('toast-container');
-                if (!container) return;
-                const toast = document.createElement('div');
-                let bgClass = type === 'success' ? 'bg-green-500' : (type === 'danger' || type === 'error' ? 'bg-red-500' : 'bg-blue-500');
-                let iconClass = type === 'success' ? 'fa-check-circle' : (type === 'danger' || type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+      {% if current_user.is_authenticated %}
+      // Unlock audio on first user interaction
+      const unlockAudio = () => {
+        const ringtone = document.getElementById('incomingRingtone');
+        if (ringtone) {
+          ringtone.play().then(() => {
+            ringtone.pause();
+            ringtone.currentTime = 0;
+          }).catch(e => { });
+        }
+        document.removeEventListener('click', unlockAudio);
+      };
+      document.addEventListener('click', unlockAudio);
 
-                toast.className = `toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] ${bgClass}`;
-                toast.innerHTML = `<i class="fas ${iconClass} mr-3 text-xl"></i><span class="font-medium text-sm">${message}</span>`;
+      window.globalSocket = io();
+      window.globalSocket.on('connect', () => {
+        window.globalSocket.emit('join_notifications');
+        // Fetch real notification count on page load (auto-cleans orphaned notifications)
+        fetch('/api/notifications')
+          .then(res => res.json())
+          .then(data => { if (data.success) updateNotifBadge(data.unread_count); })
+          .catch(() => {});
+      });
+      window.globalSocket.on('notification', (data) => {
+        // Play notification sound
+        const globalSound = document.getElementById('globalNotifSound');
+        if (globalSound) {
+          globalSound.volume = 1.0;
+          globalSound.play().catch(e => console.log("Audio play blocked by browser"));
+        }
 
-                container.appendChild(toast);
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'translate-x-full');
-                    setTimeout(() => toast.remove(), 500);
-                }, 3500);
-            };
+        // If it's a message, just show toast and update msg badge but not fetch notification list
+        // If it's a general notification, fetch notifications and update UI
+        if (data.type === 'new_notification') {
+          const badge = document.getElementById('nav-notif-badge');
+          if (badge) {
+            let currentCount = parseInt(badge.textContent) || 0;
+            updateNotifBadge(currentCount + 1);
+          }
+          if (!document.getElementById('notifDropdownPanel').classList.contains('hidden')) {
+            fetchNotifications();
+          }
+        } else if (data.type === 'message') {
+          // Update unread_msg_count locally
+          // ... message toast will still show
+        }
 
-            // Dark mode toggles
-            function toggleTheme() {
-                const darkIcon = document.getElementById('theme-toggle-dark-icon');
-                const lightIcon = document.getElementById('theme-toggle-light-icon');
-                if (darkIcon && lightIcon) {
-                    darkIcon.classList.toggle('hidden');
-                    lightIcon.classList.toggle('hidden');
-                }
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] bg-blue-600 border-l-4 border-white cursor-pointer';
 
-                if (localStorage.getItem('color-theme')) {
-                    if (localStorage.getItem('color-theme') === 'light') {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    }
-                } else {
-                    if (document.documentElement.classList.contains('dark')) {
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('color-theme', 'light');
-                    } else {
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('color-theme', 'dark');
-                    }
-                }
+        toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
+
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+
+        const displayMessage = data.message.startsWith('[IMAGE]') ? '[Hình ảnh]' : data.message;
+        const tempDiv = document.createElement('div');
+        tempDiv.textContent = displayMessage;
+        const escapedMessage = tempDiv.innerHTML;
+
+        toast.innerHTML = `
+              <i class="fas fa-comment-dots mr-3 text-xl"></i>
+              <div class="flex-grow">
+                  <div class="flex justify-between items-center mb-1">
+                      <span class="font-bold text-sm">${data.sender_name}</span>
+                      <span class="text-[10px] opacity-80">${timeStr}</span>
+                  </div>
+                  <span class="text-xs truncate block max-w-[200px]">${escapedMessage}</span>
+              </div>`;
+
+
+        container.appendChild(toast);
+        setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 4000);
+      });
+
+      // 🏷️ Tag notification (khi bị tag trong comment)
+      window.globalSocket.on('tag_notification', (data) => {
+        // Play sound
+        const globalSound = document.getElementById('globalNotifSound');
+        if (globalSound) globalSound.play().catch(e => { });
+
+        // Show badge
+        const navBadge = document.getElementById('nav-badge');
+        if (navBadge) navBadge.classList.remove('hidden');
+        const navBadgeMobile = document.getElementById('nav-badge-mobile');
+        if (navBadgeMobile) navBadgeMobile.classList.remove('hidden');
+
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-5 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-3 min-w-[320px] bg-gradient-to-r from-orange-600 to-orange-500 cursor-pointer border-l-4 border-yellow-300';
+
+        toast.onclick = () => {
+          if (typeof openDetailModal === 'function') {
+            openDetailModal(data.item_id);
+          } else {
+            window.location.href = `/post/${data.item_id}`;
+          }
+        };
+
+        const snippet = data.comment_snippet.length > 60 ? data.comment_snippet.substring(0, 60) + '...' : data.comment_snippet;
+
+        toast.innerHTML = `
+                  <img src="${data.actor_avatar}" class="w-10 h-10 rounded-full border-2 border-white/50 flex-shrink-0 mt-0.5">
+                  <div class="flex-grow min-w-0">
+                      <div class="flex justify-between items-center mb-1">
+                          <span class="font-bold text-sm">🏷️ ${data.actor_name}</span>
+                          <span class="text-[10px] opacity-80">Vừa xong</span>
+                      </div>
+                      <p class="text-xs opacity-95">đã nhắc đến bạn trong bình luận</p>
+                      <p class="text-[11px] mt-1 opacity-80 truncate italic">"${snippet}"</p>
+                      <p class="text-[9px] mt-1 opacity-60">📌 ${data.item_title || 'Bài viết'} · Nhấn để xem</p>
+                  </div>`;
+
+        container.appendChild(toast);
+        setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 6000);
+      });
+
+      // 📢 🌍 Lắng nghe thông báo toàn hệ thống (System Broadcast)
+      window.globalSocket.on('announcement', (data) => {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-4 min-w-[320px] bg-gray-900 border-l-4 border-orange-500 scale-105 cursor-pointer';
+
+        // Clicking takes to inbox
+        toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
+
+        // Play notification sound
+        const globalSound = document.getElementById('globalNotifSound');
+        if (globalSound) globalSound.play().catch(e => { });
+
+        toast.innerHTML = `
+                  <div class="bg-orange-600 p-2 rounded-lg mt-0.5"><i class="fas fa-bullhorn rotate-[-10deg]"></i></div>
+                  <div class="flex-grow">
+                      <div class="flex justify-between items-center mb-1">
+                          <span class="font-bold text-xs uppercase tracking-widest text-orange-400">Thông báo hệ thống</span>
+                          <span class="text-[9px] opacity-50">Vừa xong</span>
+                      </div>
+                      <p class="text-sm font-medium leading-relaxed">${data.message}</p>
+                      <p class="text-[9px] text-gray-500 mt-2 italic">Nhấn để xem trong hộp thư</p>
+                  </div>`;
+
+        container.appendChild(toast);
+        // Announcements stay a bit longer (8 seconds)
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-x-full');
+          setTimeout(() => toast.remove(), 500);
+        }, 8000);
+      });
+      {% endif %}
+
+      // Notification Dropdown Logic
+      window.toggleNotifDropdown = function (e) {
+        if (e) e.stopPropagation();
+        const panel = document.getElementById('notifDropdownPanel');
+        if (panel.classList.contains('hidden')) {
+          panel.classList.remove('hidden');
+          panel.classList.remove('opacity-0', 'invisible', 'scale-95');
+          panel.classList.add('opacity-100', 'visible', 'scale-100');
+          fetchNotifications();
+        } else {
+          closeNotifDropdown();
+        }
+      };
+
+      function closeNotifDropdown() {
+        const panel = document.getElementById('notifDropdownPanel');
+        if (panel) {
+          panel.classList.add('hidden', 'opacity-0', 'invisible', 'scale-95');
+          panel.classList.remove('opacity-100', 'visible', 'scale-100');
+        }
+      }
+
+      document.addEventListener('click', function (e) {
+        const panel = document.getElementById('notifDropdownPanel');
+        if (panel && !panel.classList.contains('hidden') && !e.target.closest('#notifDropdownPanel') && !e.target.closest('[onclick="toggleNotifDropdown(event)"]')) {
+          closeNotifDropdown();
+        }
+      });
+
+      window.fetchNotifications = function () {
+        const list = document.getElementById('notifList');
+        list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải...</div>`;
+
+        fetch('/api/notifications')
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              renderNotifications(data.notifications);
+              updateNotifBadge(data.unread_count);
+            } else {
+              list.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">Lỗi tải thông báo</div>`;
             }
+          })
+          .catch(e => {
+            console.error("Fetch notifications error", e);
+            list.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">Không có thông báo mới</div>`;
+          });
+      };
 
-            const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeToggleMobileBtn = document.getElementById('theme-toggle-mobile');
+      window.renderNotifications = function (notifications) {
+        const list = document.getElementById('notifList');
+        if (notifications.length === 0) {
+          list.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm flex flex-col items-center"><i class="fas fa-bell-slash text-3xl mb-3 text-gray-300"></i>Không có thông báo mới</div>`;
+          return;
+        }
 
-            if (themeToggleBtn) {
-                const darkIcon = document.getElementById('theme-toggle-dark-icon');
-                const lightIcon = document.getElementById('theme-toggle-light-icon');
-                if (document.documentElement.classList.contains('dark')) {
-                    lightIcon.classList.remove('hidden');
-                } else {
-                    darkIcon.classList.remove('hidden');
-                }
-                themeToggleBtn.addEventListener('click', toggleTheme);
-            }
-            if (themeToggleMobileBtn) {
-                themeToggleMobileBtn.addEventListener('click', toggleTheme);
-            }
+        let html = '';
+        notifications.forEach(n => {
+          let iconHtml = '';
+          let bgClass = n.is_read ? 'bg-white hover:bg-gray-50' : 'bg-blue-50/50 hover:bg-blue-50';
+          let dotHtml = n.is_read ? '' : '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full flex-shrink-0 mt-3 absolute right-3"></div>';
 
-            {% if current_user.is_authenticated %}
-            // Unlock audio on first user interaction
-            const unlockAudio = () => {
-                const ringtone = document.getElementById('incomingRingtone');
-                if (ringtone) {
-                    ringtone.play().then(() => {
-                        ringtone.pause();
-                        ringtone.currentTime = 0;
-                    }).catch(e => { });
-                }
-                document.removeEventListener('click', unlockAudio);
-            };
-            document.addEventListener('click', unlockAudio);
+          if (n.action_type === 'message') iconHtml = `<div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-comment-dots text-lg"></i></div>`;
+          else if (n.action_type === 'like') iconHtml = `<div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0"><i class="fas fa-heart text-lg"></i></div>`;
+          else if (n.action_type === 'comment') iconHtml = `<div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0"><i class="fas fa-comment text-lg"></i></div>`;
+          else if (n.action_type === 'tag') iconHtml = `<div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0"><i class="fas fa-tag text-lg"></i></div>`;
+          else if (n.action_type === 'expiry_warning') iconHtml = `<div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 shrink-0"><i class="fas fa-exclamation-triangle text-lg"></i></div>`;
+          else if (n.action_type === 'system') iconHtml = `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 shrink-0"><i class="fas fa-info-circle text-lg"></i></div>`;
+          else iconHtml = `<div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0"><i class="fas fa-bell text-lg"></i></div>`;
 
-            window.globalSocket = io();
-            window.globalSocket.on('connect', () => window.globalSocket.emit('join_notifications'));
-            window.globalSocket.on('notification', (data) => {
-                // Play notification sound
-                const globalSound = document.getElementById('globalNotifSound');
-                if (globalSound) {
-                    globalSound.volume = 1.0;
-                    globalSound.play().catch(e => console.log("Audio play blocked by browser"));
-                }
-
-                // If it's a message, just show toast and update msg badge but not fetch notification list
-                // If it's a general notification, fetch notifications and update UI
-                if(data.type === 'new_notification') {
-                    const badge = document.getElementById('nav-notif-badge');
-                    if(badge) {
-                        let currentCount = parseInt(badge.textContent) || 0;
-                        updateNotifBadge(currentCount + 1);
-                    }
-                    if(!document.getElementById('notifDropdownPanel').classList.contains('hidden')) {
-                        fetchNotifications();
-                    }
-                } else if(data.type === 'message') {
-                    // Update unread_msg_count locally
-                    // ... message toast will still show
-                }
-
-                const container = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-xl shadow-lg text-white flex items-center min-w-[300px] bg-blue-600 border-l-4 border-white cursor-pointer';
-
-                toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
-
-                const now = new Date();
-                const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
-                const displayMessage = data.message.startsWith('[IMAGE]') ? '[Hình ảnh]' : data.message;
-                const tempDiv = document.createElement('div');
-                tempDiv.textContent = displayMessage;
-                const escapedMessage = tempDiv.innerHTML;
-
-                toast.innerHTML = `
-                <i class="fas fa-comment-dots mr-3 text-xl"></i>
-                <div class="flex-grow">
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="font-bold text-sm">${data.sender_name}</span>
-                        <span class="text-[10px] opacity-80">${timeStr}</span>
-                    </div>
-                    <span class="text-xs truncate block max-w-[200px]">${escapedMessage}</span>
-                </div>`;
-
-
-                container.appendChild(toast);
-                setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 4000);
-            });
-
-            // 🏷️ Tag notification (khi bị tag trong comment)
-            window.globalSocket.on('tag_notification', (data) => {
-                // Play sound
-                const globalSound = document.getElementById('globalNotifSound');
-                if (globalSound) globalSound.play().catch(e => {});
-
-                // Show badge
-                const navBadge = document.getElementById('nav-badge');
-                if (navBadge) navBadge.classList.remove('hidden');
-                const navBadgeMobile = document.getElementById('nav-badge-mobile');
-                if (navBadgeMobile) navBadgeMobile.classList.remove('hidden');
-
-                const container = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-5 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-3 min-w-[320px] bg-gradient-to-r from-orange-600 to-orange-500 cursor-pointer border-l-4 border-yellow-300';
-
-                toast.onclick = () => {
-                    if (typeof openDetailModal === 'function') {
-                        openDetailModal(data.item_id);
-                    } else {
-                        window.location.href = `/post/${data.item_id}`;
-                    }
-                };
-
-                const snippet = data.comment_snippet.length > 60 ? data.comment_snippet.substring(0, 60) + '...' : data.comment_snippet;
-
-                toast.innerHTML = `
-                    <img src="${data.actor_avatar}" class="w-10 h-10 rounded-full border-2 border-white/50 flex-shrink-0 mt-0.5">
-                    <div class="flex-grow min-w-0">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="font-bold text-sm">🏷️ ${data.actor_name}</span>
-                            <span class="text-[10px] opacity-80">Vừa xong</span>
-                        </div>
-                        <p class="text-xs opacity-95">đã nhắc đến bạn trong bình luận</p>
-                        <p class="text-[11px] mt-1 opacity-80 truncate italic">"${snippet}"</p>
-                        <p class="text-[9px] mt-1 opacity-60">📌 ${data.item_title || 'Bài viết'} · Nhấn để xem</p>
-                    </div>`;
-
-                container.appendChild(toast);
-                setTimeout(() => { toast.classList.add('opacity-0', 'translate-x-full'); setTimeout(() => toast.remove(), 500); }, 6000);
-            });
-
-            // 📢 🌍 Lắng nghe thông báo toàn hệ thống (System Broadcast)
-            window.globalSocket.on('announcement', (data) => {
-                const container = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                toast.className = 'toast-message transform transition-all duration-500 ease-in-out px-6 py-4 rounded-2xl shadow-2xl text-white flex items-start gap-4 min-w-[320px] bg-gray-900 border-l-4 border-orange-500 scale-105 cursor-pointer';
-
-                // Clicking takes to inbox
-                toast.onclick = () => window.location.href = "{{ url_for('messages_inbox.messages_inbox') }}";
-
-                // Play notification sound
-                const globalSound = document.getElementById('globalNotifSound');
-                if (globalSound) globalSound.play().catch(e => { });
-
-                toast.innerHTML = `
-                    <div class="bg-orange-600 p-2 rounded-lg mt-0.5"><i class="fas fa-bullhorn rotate-[-10deg]"></i></div>
-                    <div class="flex-grow">
-                        <div class="flex justify-between items-center mb-1">
-                            <span class="font-bold text-xs uppercase tracking-widest text-orange-400">Thông báo hệ thống</span>
-                            <span class="text-[9px] opacity-50">Vừa xong</span>
-                        </div>
-                        <p class="text-sm font-medium leading-relaxed">${data.message}</p>
-                        <p class="text-[9px] text-gray-500 mt-2 italic">Nhấn để xem trong hộp thư</p>
-                    </div>`;
-
-                container.appendChild(toast);
-                // Announcements stay a bit longer (8 seconds)
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'translate-x-full');
-                    setTimeout(() => toast.remove(), 500);
-                }, 8000);
-            });
-            {% endif %}
-
-            // Notification Dropdown Logic
-            window.toggleNotifDropdown = function(e) {
-                if(e) e.stopPropagation();
-                const panel = document.getElementById('notifDropdownPanel');
-                if (panel.classList.contains('hidden')) {
-                    panel.classList.remove('hidden');
-                    panel.classList.remove('opacity-0', 'invisible', 'scale-95');
-                    panel.classList.add('opacity-100', 'visible', 'scale-100');
-                    fetchNotifications();
-                } else {
-                    closeNotifDropdown();
-                }
-            };
-
-            function closeNotifDropdown() {
-                const panel = document.getElementById('notifDropdownPanel');
-                if (panel) {
-                    panel.classList.add('hidden', 'opacity-0', 'invisible', 'scale-95');
-                    panel.classList.remove('opacity-100', 'visible', 'scale-100');
-                }
-            }
-
-            document.addEventListener('click', function(e) {
-                const panel = document.getElementById('notifDropdownPanel');
-                if (panel && !panel.classList.contains('hidden') && !e.target.closest('#notifDropdownPanel') && !e.target.closest('[onclick="toggleNotifDropdown(event)"]')) {
-                    closeNotifDropdown();
-                }
-            });
-
-            window.fetchNotifications = function() {
-                const list = document.getElementById('notifList');
-                list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải...</div>`;
-                
-                fetch('/api/notifications')
-                    .then(res => res.json())
-                    .then(data => {
-                        if(data.success) {
-                            renderNotifications(data.notifications);
-                            updateNotifBadge(data.unread_count);
-                        } else {
-                            list.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">Lỗi tải thông báo</div>`;
-                        }
-                    })
-                    .catch(e => {
-                        console.error("Fetch notifications error", e);
-                        list.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">Không thể kết nối</div>`;
-                    });
-            };
-
-            window.renderNotifications = function(notifications) {
-                const list = document.getElementById('notifList');
-                if(notifications.length === 0) {
-                    list.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm flex flex-col items-center"><i class="fas fa-bell-slash text-3xl mb-3 text-gray-300"></i>Không có thông báo mới</div>`;
-                    return;
-                }
-                
-                let html = '';
-                notifications.forEach(n => {
-                    let iconHtml = '';
-                    let bgClass = n.is_read ? 'bg-white hover:bg-gray-50' : 'bg-blue-50/50 hover:bg-blue-50';
-                    let dotHtml = n.is_read ? '' : '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full flex-shrink-0 mt-3 absolute right-3"></div>';
-                    
-                    if (n.action_type === 'message') iconHtml = `<div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-comment-dots text-lg"></i></div>`;
-                    else if (n.action_type === 'like') iconHtml = `<div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0"><i class="fas fa-heart text-lg"></i></div>`;
-                    else if (n.action_type === 'comment') iconHtml = `<div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0"><i class="fas fa-comment text-lg"></i></div>`;
-                    else if (n.action_type === 'tag') iconHtml = `<div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0"><i class="fas fa-tag text-lg"></i></div>`;
-                    else iconHtml = `<div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0"><i class="fas fa-bell text-lg"></i></div>`;
-
-                    html += `
-                        <a href="javascript:void(0)" onclick="readNotification(${n.id}, '${n.action_type}', ${n.item_id}, ${n.actor_id})" class="flex items-start gap-4 p-4 border-b border-gray-100 last:border-0 transition-colors relative ${bgClass}">
-                            ${iconHtml}
-                            <div class="flex-grow min-w-0 pr-6">
-                                <p class="text-[14px] text-gray-800 leading-snug break-words">${n.content}</p>
-                                <span class="text-[11px] text-blue-600 mt-1 block font-medium">${formatTimeAgo(n.created_at)}</span>
-                            </div>
-                            ${dotHtml}
-                        </a>
-                    `;
-                });
-                list.innerHTML = html;
-            };
-
-            window.formatTimeAgo = function(dateString) {
-                const date = new Date(dateString);
-                const seconds = Math.floor((new Date() - date) / 1000);
-                if (seconds < 60) return "Vừa xong";
-                const m = Math.floor(seconds / 60);
-                if (m < 60) return m + " phút trước";
-                const h = Math.floor(m / 60);
-                if (h < 24) return h + " giờ trước";
-                const d = Math.floor(h / 24);
-                if (d < 30) return d + " ngày trước";
-                return date.toLocaleDateString('vi-VN');
-            };
-
-            window.readNotification = function(notifId, actionType, itemId, actorId) {
-                fetch('/api/notifications/' + notifId + '/read', {method: 'POST'})
-                .then(res => res.json())
-                .finally(() => {
-                    if (actionType === 'message' && actorId) {
-                        window.location.href = '/chat/' + actorId;
-                    } else if (itemId) {
-                        if (typeof openDetailModal === 'function') {
-                            openDetailModal(itemId);
-                            closeNotifDropdown();
-                        } else {
-                            window.location.href = '/?new_post_id=' + itemId;
-                        }
-                    } else {
-                        window.location.reload();
-                    }
-                });
-            };
-
-            window.markAllNotificationsRead = function(e) {
-                if(e) e.stopPropagation();
-                fetch('/api/notifications/read_all', {method: 'POST'})
-                .then(res => res.json())
-                .then(data => {
-                    if(data.success) {
-                        updateNotifBadge(0);
-                        fetchNotifications();
-                    }
-                });
-            };
-
-            window.updateNotifBadge = function(count) {
-                const badges = [document.getElementById('nav-notif-badge'), document.getElementById('nav-notif-badge-mobile')];
-                badges.forEach(b => {
-                    if(!b) return;
-                    if(count > 0) {
-                        b.textContent = count > 99 ? '99+' : count;
-                        b.classList.remove('hidden');
-                    } else {
-                        b.classList.add('hidden');
-                    }
-                });
-            };
+          html += `
+                      <a href="javascript:void(0)" onclick="readNotification(${n.id}, '${n.action_type}', ${n.item_id}, ${n.actor_id}, ${n.comment_id})" class="flex items-start gap-4 p-4 border-b border-gray-100 last:border-0 transition-colors relative ${bgClass}">
+                          ${iconHtml}
+                          <div class="flex-grow min-w-0 pr-6">
+                              <p class="text-[14px] text-gray-800 leading-snug break-words">${n.content}</p>
+                              <span class="text-[11px] text-blue-600 mt-1 block font-medium">${formatTimeAgo(n.created_at)}</span>
+                          </div>
+                          ${dotHtml}
+                      </a>
+                  `;
         });
-    </script>
-    {% block scripts %}{% endblock %}
+        list.innerHTML = html;
+      };
+
+      window.formatTimeAgo = function (dateString) {
+        const date = new Date(dateString);
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return "Vừa xong";
+        const m = Math.floor(seconds / 60);
+        if (m < 60) return m + " phút trước";
+        const h = Math.floor(m / 60);
+        if (h < 24) return h + " giờ trước";
+        const d = Math.floor(h / 24);
+        if (d < 30) return d + " ngày trước";
+        return date.toLocaleDateString('vi-VN');
+      };
+
+      window.readNotification = function (notifId, actionType, itemId, actorId, commentId) {
+        fetch('/api/notifications/' + notifId + '/read', { method: 'POST' })
+          .then(res => res.json())
+          .finally(() => {
+            if (actionType === 'message' && actorId) {
+              window.location.href = '/chat/' + actorId;
+            } else if (itemId) {
+              if (typeof openDetailModal === 'function') {
+                openDetailModal(itemId, commentId);
+                closeNotifDropdown();
+              } else {
+                let url = '/?new_post_id=' + itemId;
+                if (commentId) url += '&highlight_comment=' + commentId;
+                window.location.href = url;
+              }
+            } else {
+              window.location.reload();
+            }
+          });
+      };
+
+      window.markAllNotificationsRead = function (e) {
+        if (e) e.stopPropagation();
+        fetch('/api/notifications/read_all', { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              updateNotifBadge(0);
+              fetchNotifications();
+            }
+          });
+      };
+
+      window.updateNotifBadge = function (count) {
+        const badges = [document.getElementById('nav-notif-badge'), document.getElementById('nav-notif-badge-mobile')];
+        badges.forEach(b => {
+          if (!b) return;
+          if (count > 0) {
+            b.textContent = count > 99 ? '99+' : count;
+            b.classList.remove('hidden');
+          } else {
+            b.classList.add('hidden');
+          }
+        });
+      };
+    });
+  </script>
+  {% block scripts %}{% endblock %}
 </body>
 
 </html>

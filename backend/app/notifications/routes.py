@@ -137,13 +137,47 @@ def test_push():
 def get_notifications():
     """Lấy danh sách thông báo của người dùng hiện tại"""
     from app.models.notification import Notification
+    from app.extensions import db
+    
+    # Auto-clean orphaned notifications (where referenced item/comment/actor no longer exists)
+    try:
+        from app.models.item import Item
+        from app.models.user import User
+        orphaned = Notification.query.filter_by(recipient_id=current_user.id).all()
+        cleaned = 0
+        for n in orphaned:
+            try:
+                # Try accessing relationships - will fail if references are broken
+                if n.actor_id and not User.query.get(n.actor_id):
+                    db.session.delete(n)
+                    cleaned += 1
+                    continue
+                if n.item_id and not Item.query.get(n.item_id):
+                    db.session.delete(n)
+                    cleaned += 1
+                    continue
+            except Exception:
+                db.session.delete(n)
+                cleaned += 1
+        if cleaned > 0:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
     
     # Lấy 30 thông báo mới nhất
     notifications = Notification.query.filter_by(recipient_id=current_user.id).order_by(Notification.created_at.desc()).limit(30).all()
     
+    # Safe serialization - skip any that fail
+    safe_notifications = []
+    for n in notifications:
+        try:
+            safe_notifications.append(n.to_dict())
+        except Exception:
+            pass
+    
     return jsonify({
         'success': True,
-        'notifications': [n.to_dict() for n in notifications],
+        'notifications': safe_notifications,
         'unread_count': Notification.query.filter_by(recipient_id=current_user.id, is_read=False).count()
     })
 
