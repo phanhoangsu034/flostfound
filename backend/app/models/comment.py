@@ -13,7 +13,7 @@ class Comment(db.Model):
     item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
     
     # Relationships
-    user = db.relationship('User', backref=db.backref('comments', lazy=True))
+    user = db.relationship('User', backref=db.backref('comments', lazy=True, cascade="all, delete-orphan"))
     item = db.relationship('Item', backref=db.backref('comments', lazy='dynamic', cascade="all, delete-orphan"))
 
     def to_dict(self):

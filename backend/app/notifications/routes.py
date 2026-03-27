@@ -131,3 +131,46 @@ def test_push():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/api/notifications', methods=['GET'])
+@login_required
+def get_notifications():
+    """Lấy danh sách thông báo của người dùng hiện tại"""
+    from app.models.notification import Notification
+    
+    # Lấy 30 thông báo mới nhất
+    notifications = Notification.query.filter_by(recipient_id=current_user.id).order_by(Notification.created_at.desc()).limit(30).all()
+    
+    return jsonify({
+        'success': True,
+        'notifications': [n.to_dict() for n in notifications],
+        'unread_count': Notification.query.filter_by(recipient_id=current_user.id, is_read=False).count()
+    })
+
+@bp.route('/api/notifications/<int:notif_id>/read', methods=['POST'])
+@login_required
+def mark_read(notif_id):
+    """Đánh dấu 1 thông báo là đã đọc"""
+    from app.models.notification import Notification
+    from app.extensions import db
+    
+    notif = Notification.query.filter_by(id=notif_id, recipient_id=current_user.id).first()
+    if notif and not notif.is_read:
+        notif.is_read = True
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'message': 'Không tìm thấy hoặc đã đọc'}), 404
+
+@bp.route('/api/notifications/read_all', methods=['POST'])
+@login_required
+def mark_all_read():
+    """Đánh dấu tất cả thông báo là đã đọc"""
+    from app.models.notification import Notification
+    from app.extensions import db
+    
+    unread = Notification.query.filter_by(recipient_id=current_user.id, is_read=False).all()
+    for n in unread:
+        n.is_read = True
+        
+    db.session.commit()
+    return jsonify({'success': True})

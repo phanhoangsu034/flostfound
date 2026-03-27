@@ -26,11 +26,37 @@ def toggle_like(item_id):
 
     if existing:
         db.session.delete(existing)
+        
+        # Remove notification if unlike
+        Notification.query.filter_by(
+            action_type='like', actor_id=current_user.id, item_id=item_id
+        ).delete()
+        
         db.session.commit()
         liked = False
     else:
         new_like = Like(user_id=current_user.id, item_id=item_id)
         db.session.add(new_like)
+        
+        # Add Notification
+        if current_user.id != item.user_id:
+            notif = Notification(
+                recipient_id=item.user_id,
+                actor_id=current_user.id,
+                item_id=item_id,
+                action_type='like',
+                content=f'{current_user.username} đã thích tin "{item.title}" của bạn'
+            )
+            db.session.add(notif)
+            
+            # Emit socket
+            from app.extensions import socketio
+            socketio.emit('notification', {
+                'message': notif.content,
+                'sender_name': 'Like mới',
+                'type': 'new_notification'
+            }, room=f'user_{item.user_id}')
+            
         db.session.commit()
         liked = True
 
@@ -91,7 +117,28 @@ def add_comment(item_id):
         item_id=item_id
     )
     db.session.add(comment)
-    db.session.commit()
+    db.session.flush() # flush to get comment.id
+    
+    # Notify Post Owner (if not self)
+    if current_user.id != item.user_id:
+        # Avoid duplicate duplicate comment notification if they also tagged the owner
+        mentioned_usernames_check = set(re.findall(r'@(\w+)', content))
+        if item.user.username not in mentioned_usernames_check:
+            notif = Notification(
+                recipient_id=item.user_id,
+                actor_id=current_user.id,
+                item_id=item_id,
+                comment_id=comment.id,
+                action_type='comment',
+                content=f'{current_user.username} đã bình luận: "{content[:60]}...' if len(content)>60 else f'{current_user.username} đã bình luận: "{content}"'
+            )
+            db.session.add(notif)
+            from app.extensions import socketio
+            socketio.emit('notification', {
+                'message': notif.content,
+                'sender_name': 'Bình luận mới',
+                'type': 'new_notification'
+            }, room=f'user_{item.user_id}')
 
     # Parse @mentions and create notifications
     mentioned_usernames = set(re.findall(r'@(\w+)', content))

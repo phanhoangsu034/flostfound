@@ -45,10 +45,14 @@ def register_hooks(app):
             db.session.commit()
 
     @app.context_processor
-    def inject_unread_count():
-        """Inject unread message count into all templates"""
+    def inject_unread_counts():
+        """Inject unread message and notification counts into all templates"""
         if current_user.is_authenticated:
             from app.models.message import Message 
-            count = Message.query.filter_by(recipient_id=current_user.id, is_read=False).count()
-            return dict(unread_count=count)
-        return dict(unread_count=0)
+            from app.models.notification import Notification
+            
+            msg_count = Message.query.filter_by(recipient_id=current_user.id, is_read=False).count()
+            notif_count = Notification.query.filter_by(recipient_id=current_user.id, is_read=False).count()
+            
+            return dict(unread_msg_count=msg_count, unread_notif_count=notif_count)
+        return dict(unread_msg_count=0, unread_notif_count=0)

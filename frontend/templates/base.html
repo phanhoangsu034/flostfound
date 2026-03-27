@@ -258,14 +258,27 @@
                         <i class="fas fa-plus mr-1"></i>Đăng Tin
                     </button>
 
+                    <!-- Messenger Icon -->
                     <a href="{{ url_for('messages_inbox.messages_inbox') }}"
-                        class="relative text-gray-600 hover:text-orange-600 px-2 py-2 ml-2">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span id="nav-badge"
-                            class="{% if unread_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-red-100 bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
-                            {% if unread_count > 0 %}{{ unread_count }}{% else %}!{% endif %}
+                        class="relative text-gray-600 hover:text-blue-600 px-2 py-2 ml-2 transition">
+                        <i class="fab fa-facebook-messenger text-xl"></i>
+                        <span id="nav-msg-badge"
+                            class="{% if unread_msg_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
+                            {% if unread_msg_count > 0 %}{{ unread_msg_count }}{% else %}!{% endif %}
                         </span>
                     </a>
+
+                    <!-- Notification Bell -->
+                    <div class="relative ml-2">
+                        <button type="button" onclick="toggleNotifDropdown(event)" id="notifDropdownBtn"
+                            class="relative text-gray-600 hover:text-orange-600 px-2 py-2 transition focus:outline-none">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span id="nav-notif-badge"
+                                class="{% if unread_notif_count == 0 %}hidden{% endif %} absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold text-white bg-red-600 rounded-full transform translate-x-1/4 -translate-y-1/4">
+                                {{ unread_notif_count }}
+                            </span>
+                        </button>
+                    </div>
 
                     <div class="relative dropdown-group ml-2">
                         <button type="button"
@@ -283,8 +296,7 @@
                                 <a href="{{ url_for('profile.activity') }}"
                                     class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Quản Lý Hoạt
                                     Động</a>
-                                <a href="{{ url_for('profile.change_password') }}"
-                                    class="block px-4 py-2 text-sm text-gray-600 hover:bg-orange-50">Đổi Mật Khẩu</a>
+
                                 {% if current_user.level == 1 %}
                                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
                                     class="block px-4 py-2 text-sm text-red-500 hover:bg-red-50">Admin Panel</a>
@@ -306,13 +318,20 @@
                 <!-- Mobile Menu Button & Icons -->
                 <div class="flex md:hidden items-center space-x-4">
                     {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('messages_inbox.messages_inbox') }}" class="relative text-gray-600">
-                        <i class="fas fa-bell text-xl"></i>
-                        <span id="nav-badge-mobile"
-                            class="{% if unread_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
-                            {{ unread_count }}
+                    <a href="{{ url_for('messages_inbox.messages_inbox') }}" class="relative text-gray-600 mr-2">
+                        <i class="fab fa-facebook-messenger text-xl"></i>
+                        <span id="nav-msg-badge-mobile"
+                            class="{% if unread_msg_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
+                            {{ unread_msg_count }}
                         </span>
                     </a>
+                    <button type="button" onclick="toggleNotifDropdown(event)" class="relative text-gray-600 focus:outline-none">
+                        <i class="fas fa-bell text-xl"></i>
+                        <span id="nav-notif-badge-mobile"
+                            class="{% if unread_notif_count == 0 %}hidden{% endif %} absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] text-white font-bold">
+                            {{ unread_notif_count }}
+                        </span>
+                    </button>
                     {% endif %}
 
                     <!-- Dark Mode Toggle Mobile -->
@@ -356,9 +375,7 @@
                 <a href="{{ url_for('profile.activity') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Quản Lý
                     Hoạt Động</a>
-                <a href="{{ url_for('profile.change_password') }}"
-                    class="block px-3 py-3 rounded-xl text-base font-medium text-gray-700 hover:bg-orange-50">Đổi Mật
-                    Khẩu</a>
+
                 {% if current_user.level == 1 %}
                 <a href="{{ url_for('admin_dashboard.admin_dashboard') }}"
                     class="block px-3 py-3 rounded-xl text-base font-medium text-red-500 hover:bg-red-50">Admin
@@ -376,6 +393,19 @@
                         Ký</a>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+        
+        <!-- Shared Notification Dropdown Panel -->
+        <div id="notifDropdownPanel" class="hidden absolute right-4 sm:right-6 lg:right-8 top-16 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50">
+            <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <h3 class="font-bold text-gray-800 text-base">Thông báo</h3>
+                <button onclick="markAllNotificationsRead(event)" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Đánh dấu đã đọc tất cả</button>
+            </div>
+            <div id="notifList" class="max-h-[70vh] sm:max-h-[450px] overflow-y-auto w-full">
+                <div class="p-4 text-center text-gray-500 text-sm">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Đang tải...
+                </div>
             </div>
         </div>
     </nav>
@@ -408,10 +438,10 @@
         <a href="{{ url_for('messages_inbox.messages_inbox') }}"
             class="flex items-center justify-center w-14 h-14 bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg transition transform hover:scale-110">
             <i class="fas fa-comment-dots text-2xl"></i>
-            {% if unread_count > 0 %}
+            {% if unread_msg_count > 0 %}
             <span id="bubble-badge"
                 class="absolute top-0 right-0 flex items-center justify-center h-5 w-5 text-xs font-bold text-white bg-red-600 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4">
-                {{ unread_count }}
+                {{ unread_msg_count }}
             </span>
             {% else %}
             <span id="bubble-badge"
@@ -578,9 +608,21 @@
                     globalSound.play().catch(e => console.log("Audio play blocked by browser"));
                 }
 
-                document.getElementById('nav-badge').classList.remove('hidden');
-                document.getElementById('bubble-badge').classList.remove('hidden');
-
+                // If it's a message, just show toast and update msg badge but not fetch notification list
+                // If it's a general notification, fetch notifications and update UI
+                if(data.type === 'new_notification') {
+                    const badge = document.getElementById('nav-notif-badge');
+                    if(badge) {
+                        let currentCount = parseInt(badge.textContent) || 0;
+                        updateNotifBadge(currentCount + 1);
+                    }
+                    if(!document.getElementById('notifDropdownPanel').classList.contains('hidden')) {
+                        fetchNotifications();
+                    }
+                } else if(data.type === 'message') {
+                    // Update unread_msg_count locally
+                    // ... message toast will still show
+                }
 
                 const container = document.getElementById('toast-container');
                 const toast = document.createElement('div');
@@ -666,10 +708,6 @@
                 const globalSound = document.getElementById('globalNotifSound');
                 if (globalSound) globalSound.play().catch(e => { });
 
-                // Hiện Badge đỏ trên Menu
-                const navBadge = document.getElementById('nav-badge');
-                if (navBadge) navBadge.classList.remove('hidden');
-
                 toast.innerHTML = `
                     <div class="bg-orange-600 p-2 rounded-lg mt-0.5"><i class="fas fa-bullhorn rotate-[-10deg]"></i></div>
                     <div class="flex-grow">
@@ -689,6 +727,145 @@
                 }, 8000);
             });
             {% endif %}
+
+            // Notification Dropdown Logic
+            window.toggleNotifDropdown = function(e) {
+                if(e) e.stopPropagation();
+                const panel = document.getElementById('notifDropdownPanel');
+                if (panel.classList.contains('hidden')) {
+                    panel.classList.remove('hidden');
+                    panel.classList.remove('opacity-0', 'invisible', 'scale-95');
+                    panel.classList.add('opacity-100', 'visible', 'scale-100');
+                    fetchNotifications();
+                } else {
+                    closeNotifDropdown();
+                }
+            };
+
+            function closeNotifDropdown() {
+                const panel = document.getElementById('notifDropdownPanel');
+                if (panel) {
+                    panel.classList.add('hidden', 'opacity-0', 'invisible', 'scale-95');
+                    panel.classList.remove('opacity-100', 'visible', 'scale-100');
+                }
+            }
+
+            document.addEventListener('click', function(e) {
+                const panel = document.getElementById('notifDropdownPanel');
+                if (panel && !panel.classList.contains('hidden') && !e.target.closest('#notifDropdownPanel') && !e.target.closest('[onclick="toggleNotifDropdown(event)"]')) {
+                    closeNotifDropdown();
+                }
+            });
+
+            window.fetchNotifications = function() {
+                const list = document.getElementById('notifList');
+                list.innerHTML = `<div class="p-4 text-center text-gray-500 text-sm"><i class="fas fa-spinner fa-spin mr-2"></i> Đang tải...</div>`;
+                
+                fetch('/api/notifications')
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.success) {
+                            renderNotifications(data.notifications);
+                            updateNotifBadge(data.unread_count);
+                        } else {
+                            list.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">Lỗi tải thông báo</div>`;
+                        }
+                    })
+                    .catch(e => {
+                        console.error("Fetch notifications error", e);
+                        list.innerHTML = `<div class="p-4 text-center text-red-500 text-sm">Không thể kết nối</div>`;
+                    });
+            };
+
+            window.renderNotifications = function(notifications) {
+                const list = document.getElementById('notifList');
+                if(notifications.length === 0) {
+                    list.innerHTML = `<div class="p-8 text-center text-gray-500 text-sm flex flex-col items-center"><i class="fas fa-bell-slash text-3xl mb-3 text-gray-300"></i>Không có thông báo mới</div>`;
+                    return;
+                }
+                
+                let html = '';
+                notifications.forEach(n => {
+                    let iconHtml = '';
+                    let bgClass = n.is_read ? 'bg-white hover:bg-gray-50' : 'bg-blue-50/50 hover:bg-blue-50';
+                    let dotHtml = n.is_read ? '' : '<div class="w-2.5 h-2.5 bg-blue-600 rounded-full flex-shrink-0 mt-3 absolute right-3"></div>';
+                    
+                    if (n.action_type === 'message') iconHtml = `<div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-comment-dots text-lg"></i></div>`;
+                    else if (n.action_type === 'like') iconHtml = `<div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0"><i class="fas fa-heart text-lg"></i></div>`;
+                    else if (n.action_type === 'comment') iconHtml = `<div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0"><i class="fas fa-comment text-lg"></i></div>`;
+                    else if (n.action_type === 'tag') iconHtml = `<div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0"><i class="fas fa-tag text-lg"></i></div>`;
+                    else iconHtml = `<div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0"><i class="fas fa-bell text-lg"></i></div>`;
+
+                    html += `
+                        <a href="javascript:void(0)" onclick="readNotification(${n.id}, '${n.action_type}', ${n.item_id}, ${n.actor_id})" class="flex items-start gap-4 p-4 border-b border-gray-100 last:border-0 transition-colors relative ${bgClass}">
+                            ${iconHtml}
+                            <div class="flex-grow min-w-0 pr-6">
+                                <p class="text-[14px] text-gray-800 leading-snug break-words">${n.content}</p>
+                                <span class="text-[11px] text-blue-600 mt-1 block font-medium">${formatTimeAgo(n.created_at)}</span>
+                            </div>
+                            ${dotHtml}
+                        </a>
+                    `;
+                });
+                list.innerHTML = html;
+            };
+
+            window.formatTimeAgo = function(dateString) {
+                const date = new Date(dateString);
+                const seconds = Math.floor((new Date() - date) / 1000);
+                if (seconds < 60) return "Vừa xong";
+                const m = Math.floor(seconds / 60);
+                if (m < 60) return m + " phút trước";
+                const h = Math.floor(m / 60);
+                if (h < 24) return h + " giờ trước";
+                const d = Math.floor(h / 24);
+                if (d < 30) return d + " ngày trước";
+                return date.toLocaleDateString('vi-VN');
+            };
+
+            window.readNotification = function(notifId, actionType, itemId, actorId) {
+                fetch('/api/notifications/' + notifId + '/read', {method: 'POST'})
+                .then(res => res.json())
+                .finally(() => {
+                    if (actionType === 'message' && actorId) {
+                        window.location.href = '/chat/' + actorId;
+                    } else if (itemId) {
+                        if (typeof openDetailModal === 'function') {
+                            openDetailModal(itemId);
+                            closeNotifDropdown();
+                        } else {
+                            window.location.href = '/?new_post_id=' + itemId;
+                        }
+                    } else {
+                        window.location.reload();
+                    }
+                });
+            };
+
+            window.markAllNotificationsRead = function(e) {
+                if(e) e.stopPropagation();
+                fetch('/api/notifications/read_all', {method: 'POST'})
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        updateNotifBadge(0);
+                        fetchNotifications();
+                    }
+                });
+            };
+
+            window.updateNotifBadge = function(count) {
+                const badges = [document.getElementById('nav-notif-badge'), document.getElementById('nav-notif-badge-mobile')];
+                badges.forEach(b => {
+                    if(!b) return;
+                    if(count > 0) {
+                        b.textContent = count > 99 ? '99+' : count;
+                        b.classList.remove('hidden');
+                    } else {
+                        b.classList.add('hidden');
+                    }
+                });
+            };
         });
     </script>
     {% block scripts %}{% endblock %}
