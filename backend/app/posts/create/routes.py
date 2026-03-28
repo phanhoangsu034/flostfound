@@ -160,7 +160,7 @@ def ai_scan_image():
         
     try:
         # Load model
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         
         # Read file bytes temporarily for Gemini API
         import tempfile
