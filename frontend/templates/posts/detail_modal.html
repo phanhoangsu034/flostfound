@@ -125,7 +125,7 @@
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500 uppercase font-bold">Danh mục</p>
-                                    <p class="text-sm font-semibold text-gray-800" id="detailCategory">--</p>
+                                    <div class="flex flex-wrap gap-1 mt-0.5" id="detailCategory"></div>
                                 </div>
                             </div>
                         </div>
@@ -679,7 +679,14 @@
         }
         document.getElementById('detailDate').textContent = new Date(item.date_posted).toLocaleDateString();
         document.getElementById('detailIncidentDate').textContent = item.incident_date ? new Date(item.incident_date).toLocaleString('vi-VN') : 'Không rõ';
-        document.getElementById('detailCategory').textContent = item.category || 'Chưa phân loại';
+        // Render categories as tag badges
+        const catContainer = document.getElementById('detailCategory');
+        const catList = (item.categories && item.categories.length > 0) ? item.categories : (item.category ? item.category.split(', ') : []);
+        if (catList.length > 0) {
+            catContainer.innerHTML = catList.map(c => `<span class="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200">${c}</span>`).join('');
+        } else {
+            catContainer.innerHTML = '<span class="text-sm text-gray-400">Chưa phân loại</span>';
+        }
         document.getElementById('detailLocation').textContent = item.location + (item.specific_location ? ` - ${item.specific_location}` : '');
         document.getElementById('detailDescription').textContent = item.description;
         document.getElementById('detailContact').textContent = item.phone_number || item.contact_info;
@@ -1166,8 +1173,8 @@
             console.error('Submit comment error:', err);
             Swal.fire({
                 icon: 'error',
-                title: 'Cảnh báo spam',
-                text: 'Vui lòng thử lại.',
+                title: 'Lỗi kết nối',
+                text: 'Không thể gửi bình luận. Vui lòng thử lại.',
                 confirmButtonColor: '#ea580c'
             });
         } finally {

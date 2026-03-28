@@ -31,7 +31,7 @@ def post_item():
         location = request.form.get('location')
         specific_location = request.form.get('specific_location')
         categories_list = request.form.getlist('category')
-        category = categories_list[0] if categories_list else request.form.get('category')
+        category = ', '.join(categories_list) if categories_list else request.form.get('category')
         itype = request.form.get('item_type')
         phone_number = request.form.get('phone_number')
         facebook_url = request.form.get('facebook_url')

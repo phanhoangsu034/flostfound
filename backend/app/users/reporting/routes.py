@@ -16,14 +16,14 @@ def toggle_mute_user(target_id):
 
     target = User.query.get_or_404(target_id)
     
-    existing = MutedUser.query.filter_by(user_id=target_id, muted_user_id=current_user.id).first()
+    existing = MutedUser.query.filter_by(user_id=current_user.id, muted_user_id=target_id).first()
     if existing:
         db.session.delete(existing)
         muted = False
         message = f"Đã bỏ theo báo (unmute) {target.username}"
     else:
         # Prevent duplicate
-        new_mute = MutedUser(user_id=target_id, muted_user_id=current_user.id)
+        new_mute = MutedUser(user_id=current_user.id, muted_user_id=target_id)
         db.session.add(new_mute)
         muted = True
         message = f"Đã bỏ qua thông báo từ {target.username}"
