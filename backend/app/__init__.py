@@ -56,10 +56,15 @@ def create_app(config_name=None):
             "ALTER TABLE user ADD COLUMN last_seen DATETIME",
             "ALTER TABLE user ADD COLUMN created_at DATETIME",
             "ALTER TABLE user ADD COLUMN auth_provider VARCHAR(50) DEFAULT 'local'",
-            "ALTER TABLE item ADD COLUMN status VARCHAR(20) DEFAULT 'Open'"
-
+            "ALTER TABLE item ADD COLUMN status VARCHAR(20) DEFAULT 'Open'",
+            "ALTER TABLE comment ADD COLUMN parent_id INTEGER",
+            "ALTER TABLE item ADD COLUMN renewal_count INTEGER DEFAULT 0",
+            "ALTER TABLE item ADD COLUMN warning_sent BOOLEAN DEFAULT 0",
+            "ALTER TABLE item ADD COLUMN expires_at DATETIME",
+            "ALTER TABLE user ADD COLUMN spam_strikes INTEGER DEFAULT 0",
+            "ALTER TABLE user ADD COLUMN tagging_locked_until DATETIME"
         ]
-        
+
         for statement in migrations:
             try:
                 db.session.execute(text(statement))
@@ -101,6 +106,7 @@ def register_blueprints(app):
     from app.posts.create.routes import bp as posts_create_bp
     from app.posts.delete.routes import bp as posts_delete_bp
     from app.posts.update.routes import bp as posts_update_bp
+    from app.posts.interactions.routes import bp as posts_interactions_bp
     
     # Messages blueprints
     from app.messages.chat.routes import bp as messages_chat_bp
@@ -117,6 +123,12 @@ def register_blueprints(app):
     # Search & Filter blueprint
     from app.search.routes import bp as search_bp
 
+    # Notifications blueprint
+    from app.notifications.routes import bp as notifications_bp
+
+    # Users Reporting blueprint
+    from app.users.reporting.routes import bp as users_reporting_bp
+
     # Register all blueprints
     app.register_blueprint(auth_login_bp)
     app.register_blueprint(auth_register_bp)
@@ -126,6 +138,7 @@ def register_blueprints(app):
     app.register_blueprint(posts_create_bp)
     app.register_blueprint(posts_delete_bp)
     app.register_blueprint(posts_update_bp)
+    app.register_blueprint(posts_interactions_bp)
     app.register_blueprint(messages_chat_bp)
     app.register_blueprint(messages_inbox_bp)
     app.register_blueprint(admin_dashboard_bp)
@@ -133,6 +146,8 @@ def register_blueprints(app):
     app.register_blueprint(admin_logs_bp)
     app.register_blueprint(profile_bp)
     app.register_blueprint(search_bp)
+    app.register_blueprint(notifications_bp)
+    app.register_blueprint(users_reporting_bp)
     
     # Register SocketIO events
     from app.messages.socketio import events

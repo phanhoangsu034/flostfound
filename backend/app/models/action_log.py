@@ -10,4 +10,4 @@ class ActionLog(db.Model):
     action = db.Column(db.String(100), nullable=False)  # e.g., "Posted Item", "Deleted Item"
     details = db.Column(db.Text, nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref=db.backref('logs', lazy=True))
+    user = db.relationship('User', backref=db.backref('logs', lazy=True, cascade="all, delete-orphan"))

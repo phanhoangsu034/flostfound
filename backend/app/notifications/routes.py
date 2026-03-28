@@ -131,3 +131,80 @@ def test_push():
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@bp.route('/api/notifications', methods=['GET'])
+@login_required
+def get_notifications():
+    """Lấy danh sách thông báo của người dùng hiện tại"""
+    from app.models.notification import Notification
+    from app.extensions import db
+    
+    # Auto-clean orphaned notifications (where referenced item/comment/actor no longer exists)
+    try:
+        from app.models.item import Item
+        from app.models.user import User
+        orphaned = Notification.query.filter_by(recipient_id=current_user.id).all()
+        cleaned = 0
+        for n in orphaned:
+            try:
+                # Try accessing relationships - will fail if references are broken
+                if n.actor_id and not User.query.get(n.actor_id):
+                    db.session.delete(n)
+                    cleaned += 1
+                    continue
+                if n.item_id and not Item.query.get(n.item_id):
+                    db.session.delete(n)
+                    cleaned += 1
+                    continue
+            except Exception:
+                db.session.delete(n)
+                cleaned += 1
+        if cleaned > 0:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+    
+    # Lấy 30 thông báo mới nhất
+    notifications = Notification.query.filter_by(recipient_id=current_user.id).order_by(Notification.created_at.desc()).limit(30).all()
+    
+    # Safe serialization - skip any that fail
+    safe_notifications = []
+    for n in notifications:
+        try:
+            safe_notifications.append(n.to_dict())
+        except Exception:
+            pass
+    
+    return jsonify({
+        'success': True,
+        'notifications': safe_notifications,
+        'unread_count': Notification.query.filter_by(recipient_id=current_user.id, is_read=False).count()
+    })
+
+@bp.route('/api/notifications/<int:notif_id>/read', methods=['POST'])
+@login_required
+def mark_read(notif_id):
+    """Đánh dấu 1 thông báo là đã đọc"""
+    from app.models.notification import Notification
+    from app.extensions import db
+    
+    notif = Notification.query.filter_by(id=notif_id, recipient_id=current_user.id).first()
+    if notif and not notif.is_read:
+        notif.is_read = True
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'message': 'Không tìm thấy hoặc đã đọc'}), 404
+
+@bp.route('/api/notifications/read_all', methods=['POST'])
+@login_required
+def mark_all_read():
+    """Đánh dấu tất cả thông báo là đã đọc"""
+    from app.models.notification import Notification
+    from app.extensions import db
+    
+    unread = Notification.query.filter_by(recipient_id=current_user.id, is_read=False).all()
+    for n in unread:
+        n.is_read = True
+        
+    db.session.commit()
+    return jsonify({'success': True})

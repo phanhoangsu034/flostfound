@@ -173,35 +173,86 @@ def update_user_role(user_id):
 @login_required
 @admin_required
 def delete_user(user_id):
+    from app.models.comment import Comment
+    from app.models.like import Like
+    from app.models.message import Message
+    from app.models.notification import Notification
+    from app.models.user_preference import MutedItem, BlockedUser
+    from app.models.item import Item
+    from app.models.item_image import ItemImage
+    from app.models.report import Report
+    from app.models.action_log import ActionLog
+    from app.models.fcm_token import FCMToken
+    
     user = User.query.get_or_404(user_id)
     if current_user.level >= user.level:
         flash("Bạn không có quyền xóa người cùng cấp hoặc cấp cao hơn!", "danger")
         return redirect(url_for('admin_dashboard.admin_users'))
     
     username = user.username
+    email = user.email
     
-    # FIX: Manually delete related data to avoid IntegrityError (NOT NULL constraints)
-    from app.models.message import Message
-    from app.models.item import Item
-    
-    # 1. Delete all messages
-    Message.query.filter((Message.sender_id == user_id) | (Message.recipient_id == user_id)).delete()
-    
-    # 2. Delete all items
-    Item.query.filter_by(user_id=user_id).delete()
-    
-    # 3. Delete all action logs related to this user (as performer)
-    ActionLog.query.filter_by(user_id=user_id).delete()
-    
-    # 4. Log action (This log is by CURRENT ADMIN, so it's safe)
-    log = ActionLog(user_id=current_user.id, action="Xóa tài khoản vĩnh viễn", details=f"User: {username}, Email: {user.email}")
-    
-    # 5. Final delete user
-    db.session.delete(user)
-    db.session.add(log)
-    db.session.commit()
-    
-    flash(f"Đã xóa vĩnh viễn tài khoản {username} và tất cả dữ liệu liên quan.", "success")
+    try:
+        # 1. Delete notifications (both as recipient and actor)
+        Notification.query.filter(
+            (Notification.recipient_id == user_id) | (Notification.actor_id == user_id)
+        ).delete(synchronize_session='fetch')
+        
+        # 2. Delete comments by this user
+        Comment.query.filter_by(user_id=user_id).delete(synchronize_session='fetch')
+        
+        # 3. Delete likes by this user
+        Like.query.filter_by(user_id=user_id).delete(synchronize_session='fetch')
+        
+        # 4. Delete messages (sent and received)
+        Message.query.filter(
+            (Message.sender_id == user_id) | (Message.recipient_id == user_id)
+        ).delete(synchronize_session='fetch')
+        
+        # 5. Delete muted items
+        MutedItem.query.filter_by(user_id=user_id).delete(synchronize_session='fetch')
+        
+        # 6. Delete blocks (both directions)
+        BlockedUser.query.filter(
+            (BlockedUser.user_id == user_id) | (BlockedUser.blocked_user_id == user_id)
+        ).delete(synchronize_session='fetch')
+        
+        # 7. Delete reports
+        Report.query.filter_by(reporter_id=user_id).delete(synchronize_session='fetch')
+        
+        # 8. Delete FCM tokens
+        FCMToken.query.filter_by(user_id=user_id).delete(synchronize_session='fetch')
+        
+        # 9. Delete action logs of this user
+        ActionLog.query.filter_by(user_id=user_id).delete(synchronize_session='fetch')
+        
+        # 10. Delete items (posts) and their related data
+        # Need to handle each item individually for proper cascade
+        user_items = Item.query.filter_by(user_id=user_id).all()
+        for item in user_items:
+            # Delete item's comments, likes, notifications, images via cascade
+            Comment.query.filter_by(item_id=item.id).delete(synchronize_session='fetch')
+            Like.query.filter_by(item_id=item.id).delete(synchronize_session='fetch')
+            Notification.query.filter_by(item_id=item.id).delete(synchronize_session='fetch')
+            MutedItem.query.filter_by(item_id=item.id).delete(synchronize_session='fetch')
+            ItemImage.query.filter_by(item_id=item.id).delete(synchronize_session='fetch')
+            db.session.delete(item)
+        
+        # Log action before deleting user
+        log = ActionLog(user_id=current_user.id, action="Xóa tài khoản vĩnh viễn", details=f"User: {username}, Email: {email}")
+        db.session.add(log)
+        
+        # Finally delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        flash(f"Đã xóa vĩnh viễn tài khoản {username} và tất cả dữ liệu liên quan.", "success")
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        flash(f"Lỗi khi xóa tài khoản: {str(e)}", "danger")
+        
     return redirect(url_for('admin_dashboard.admin_users'))
 
 @bp.route('/admin/users/create', methods=['POST'])

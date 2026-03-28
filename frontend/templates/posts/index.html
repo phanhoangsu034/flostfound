@@ -49,13 +49,18 @@
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // Open detail modal for new post (from redirect after creating)
+        // Open detail modal for new post (from redirect after creating or notification)
         const urlParams = new URLSearchParams(window.location.search);
         const newPostId = urlParams.get('new_post_id');
+        const commentId = urlParams.get('highlight_comment');
+        
         if (newPostId) {
-            openDetailModal(newPostId);
-            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-            window.history.pushState({ path: newUrl }, '', newUrl);
+            openDetailModal(newPostId, commentId);
+            // Clean URL
+            const url = new URL(window.location);
+            url.searchParams.delete('new_post_id');
+            url.searchParams.delete('highlight_comment');
+            window.history.replaceState({}, document.title, url.toString());
         }
     });
 </script>

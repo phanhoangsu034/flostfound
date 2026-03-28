@@ -27,6 +27,10 @@ def update_status(item_id):
     data = request.json
     if data and 'status' in data:
         item.status = data['status']
+        if item.status == 'Closed':
+            from datetime import datetime, timedelta
+            item.expires_at = datetime.utcnow() + timedelta(days=5)
+            
         db.session.commit()
         return jsonify({'success': True, 'message': 'Cập nhật trạng thái thành công'})
     return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'}), 400
@@ -49,7 +53,8 @@ def edit_item(item_id):
         desc = request.form.get('description')
         location = request.form.get('location')
         specific_location = request.form.get('specific_location')
-        category = request.form.get('category')
+        categories_list = request.form.getlist('category')
+        category = categories_list[0] if categories_list else request.form.get('category')
         itype = request.form.get('item_type')
         phone_number = request.form.get('phone_number')
         facebook_url = request.form.get('facebook_url')
@@ -79,6 +84,21 @@ def edit_item(item_id):
         item.phone_number = phone_number
         item.facebook_url = facebook_url
         item.status = status
+        
+        # Auto-expiry: If post is edited and marked as closed, set expiry to +5 days
+        if status == 'Closed':
+            from datetime import datetime, timedelta
+            item.expires_at = datetime.utcnow() + timedelta(days=5)
+            
+        from app.models.category import Category
+        if categories_list:
+            item.categories.clear()
+            for cat_name in categories_list:
+                cat_obj = Category.query.filter_by(name=cat_name).first()
+                if not cat_obj:
+                    cat_obj = Category(name=cat_name)
+                    db.session.add(cat_obj)
+                item.categories.append(cat_obj)
         
         # Handle deleted images
         deleted_images_json = request.form.get('deleted_images')

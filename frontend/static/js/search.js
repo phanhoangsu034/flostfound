@@ -593,15 +593,16 @@
         try {
             const res = await fetch(API_LOCATIONS);
             locationsData = await res.json();
-            locSelect.innerHTML = `<option value="">Tất cả khu vực</option>`;
+            locSelect.innerHTML = `<option value="">-- Khu vực --</option>`;
             locationsData.forEach(loc => {
+                if (loc.name.toLowerCase() === 'tất cả khu vực') return;
                 locSelect.innerHTML += `<option value="${esc(loc.name)}">${esc(loc.name)}</option>`;
             });
         } catch (e) { console.error("Load locations error:", e); }
     }
 
     function populateSubLocations(locationName) {
-        subLocSelect.innerHTML = `<option value="">Tất cả các khu vực</option>`;
+        subLocSelect.innerHTML = `<option value="">-- Chi tiết --</option>`;
         if (!locationName) { subLocSelect.classList.add("hidden"); return; }
 
         const loc = locationsData.find(l => l.name === locationName);
@@ -619,8 +620,9 @@
         try {
             const res = await fetch(API_CATEGORIES);
             const cats = await res.json();
-            catSelect.innerHTML = `<option value="">Tất cả danh mục</option>`;
+            catSelect.innerHTML = `<option value="">-- Danh mục --</option>`;
             cats.forEach(c => {
+                if (c.toLowerCase() === 'tất cả danh mục') return;
                 catSelect.innerHTML += `<option value="${esc(c)}">${esc(c)}</option>`;
             });
         } catch (e) { console.error("Load categories error:", e); }

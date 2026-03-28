@@ -15,10 +15,13 @@ load_dotenv()
 
 from app import create_app, socketio
 from app.extensions import db
+from app.scheduler import start_scheduler
 
 app = create_app()
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        
+    start_scheduler(app)
     socketio.run(app, debug=True, use_reloader=True, log_output=True)

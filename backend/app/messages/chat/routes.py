@@ -49,6 +49,30 @@ def send_simple_message():
         
     msg = Message(sender_id=current_user.id, recipient_id=recipient_id, body=body)
     db.session.add(msg)
+    
+    # Notifications
+    from app.models.notification import Notification
+    from datetime import datetime
+    existing_notif = Notification.query.filter_by(
+        recipient_id=recipient_id,
+        actor_id=current_user.id,
+        action_type='message',
+        is_read=False
+    ).first()
+    
+    msg_preview = body[:40] + '...' if len(body) > 40 else body
+    if existing_notif:
+        existing_notif.created_at = datetime.utcnow()
+        existing_notif.content = f'Đã gửi cho bạn một tin nhắn: "{msg_preview}"'
+    else:
+        notif = Notification(
+            recipient_id=recipient_id,
+            actor_id=current_user.id,
+            action_type='message',
+            content=f'Đã gửi cho bạn một tin nhắn: "{msg_preview}"'
+        )
+        db.session.add(notif)
+
     db.session.commit()
     
     return jsonify({'success': True})
