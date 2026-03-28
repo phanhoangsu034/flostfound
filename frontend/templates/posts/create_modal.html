@@ -709,17 +709,31 @@
                     titleEl.focus(); titleEl.blur(); // Trigger floating label properly
                 }
                 
-                // Auto fill Category
-                if (data.category) {
-                    const catEl = document.getElementById('category');
-                    // Check if the returned category is one of our options
-                    const options = Array.from(catEl.options).map(o => o.value);
-                    if (options.includes(data.category)) {
-                        catEl.value = data.category;
-                        catEl.focus(); catEl.blur();
-                    } else {
-                        catEl.value = "Khác";
+                // Auto fill Category (checkboxes) - supports array of categories
+                const aiCategories = data.categories || (data.category ? [data.category] : []);
+                if (aiCategories.length > 0) {
+                    // First uncheck all category checkboxes
+                    document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = false);
+                    
+                    const allCats = document.querySelectorAll('input[name="category"]');
+                    let anyFound = false;
+                    
+                    aiCategories.forEach(cat => {
+                        allCats.forEach(cb => {
+                            if (cb.value === cat) {
+                                cb.checked = true;
+                                anyFound = true;
+                            }
+                        });
+                    });
+                    
+                    // If none matched, select "Khác"
+                    if (!anyFound) {
+                        allCats.forEach(cb => {
+                            if (cb.value === 'Khác') cb.checked = true;
+                        });
                     }
+                    if (typeof triggerMatchSearch === 'function') triggerMatchSearch();
                 }
                 
                 // Auto fill description
@@ -748,6 +762,7 @@
             aiMsg.innerHTML = "❌ Máy chủ AI đang bận hoặc có lỗi kết nối. Hãy thử lại.";
             aiMsg.className = "text-xs text-center mt-2 text-red-500 font-medium block";
         });
+    }
 
     // Smart Matching Logic
     let matchTimeout = null;

@@ -145,11 +145,12 @@ def post_item():
         
     return render_template('posts/post_item.html')
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @bp.route('/ai-scan', methods=['POST'])
 @login_required
 def ai_scan_image():
+    genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+    
     if 'image' not in request.files:
         return jsonify({'success': False, 'message': 'Không tìm thấy ảnh.'}), 400
         
@@ -169,11 +170,11 @@ def ai_scan_image():
         img = Image.open(file.stream)
         
         prompt = '''
-        Bạn là hệ thống nhận diện đồ vật thật thông minh   . Hãy xem ảnh này và trả lời các thông tin sau bằng định dạng JSON thuần túy (không trả lời kèm markdown ```json ... ```, chỉ có ngoặc nhọn JSON),(nếu nhận diện bức ảnh không phải là đồ vật, ảnh đen xì, ảnh vô nghĩa, ảnh chân dung của 1 người thì bạn không cần trả về gì cả ).
+        Bạn là hệ thống nhận diện đồ vật thật thông minh. Hãy xem ảnh này và trả lời các thông tin sau bằng định dạng JSON thuần túy (không trả lời kèm markdown ```json ... ```, chỉ có ngoặc nhọn JSON). Nếu nhận diện bức ảnh không phải là đồ vật, ảnh đen xì, ảnh vô nghĩa, ảnh chân dung của 1 người thì trả về JSON rỗng {}.
         Cấu trúc JSON yêu cầu:
         {
             "title": "[Tên đồ vật ngắn gọn, ví dụ: Balo màu xanh, Ví da đen...]",
-            "category": "[Phân loại đồ vật. Bắt buộc phải chọn 1 trong các mục sau (lấy tên chính xác): 'Ví tiền', 'Giấy tờ', 'Điện thoại', 'Laptop', 'Chìa khóa', 'Trang phục', 'Khác']",
+            "categories": ["Danh sách các danh mục phù hợp. Chọn 1 hoặc NHIỀU mục từ danh sách sau (lấy tên chính xác): 'Ví tiền', 'Giấy tờ', 'Điện thoại', 'Laptop', 'Chìa khóa', 'Trang phục', 'Khác'. Ví dụ: một ví có chứa giấy tờ thì chọn ['Ví tiền', 'Giấy tờ']"],
             "description": "[1 đoạn mô tả chân thực về chiếc đồ này dựa trên màu sắc, chất liệu, thương hiệu, tình trạng cũ mới mà bạn nhìn thấy. Khoảng 1-3 câu.]"
         }
         '''
