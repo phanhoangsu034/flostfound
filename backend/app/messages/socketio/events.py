@@ -45,7 +45,8 @@ def handle_message(data):
     emit('notification', {
         'sender_id': current_user.id,
         'sender_name': current_user.username,
-        'message': body
+        'message': body,
+        'type': 'new_notification'
     }, room=notification_room)
 
     # 🔥 FCM Push Notification (Background - khi user đóng tab/offline)
@@ -90,7 +91,8 @@ def save_call_log(sender_id, recipient_id, body):
     emit('notification', {
         'sender_id': sender_id,
         'sender_name': 'Hệ thống',
-        'message': body
+        'message': body,
+        'type': 'new_notification'
     }, room=notification_room)
 
 @socketio.on('call_user')

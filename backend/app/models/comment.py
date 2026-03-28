@@ -12,9 +12,14 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     item_id = db.Column(db.Integer, db.ForeignKey('item.id'), nullable=False)
     
+    # Reply support: self-referential FK
+    parent_id = db.Column(db.Integer, db.ForeignKey('comment.id', ondelete='CASCADE'), nullable=True)
+    
     # Relationships
     user = db.relationship('User', backref=db.backref('comments', lazy=True, cascade="all, delete-orphan"))
     item = db.relationship('Item', backref=db.backref('comments', lazy='dynamic', cascade="all, delete-orphan"))
+    replies = db.relationship('Comment', backref=db.backref('parent', remote_side=[id]),
+                              lazy='dynamic', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -24,5 +29,7 @@ class Comment(db.Model):
             'user_id': self.user_id,
             'username': self.user.username,
             'user_avatar': self.user.avatar,
-            'item_id': self.item_id
+            'item_id': self.item_id,
+            'parent_id': self.parent_id,
+            'reply_to_username': self.parent.user.username if self.parent else None
         }
