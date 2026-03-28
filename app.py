@@ -12,9 +12,9 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flostfound.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = 600
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
-app.config['REMEMBER_COOKIE_DURATION'] = 600
+app.config['REMEMBER_COOKIE_DURATION'] = 3600
 
 db.init_app(app)
 login_manager = LoginManager()
