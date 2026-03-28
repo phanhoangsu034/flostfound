@@ -30,6 +30,10 @@ class User(UserMixin, db.Model):
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Anti-spam fields
+    spam_strikes = db.Column(db.Integer, default=0)
+    tagging_locked_until = db.Column(db.DateTime, nullable=True)
+
     # --- Password helpers ---
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

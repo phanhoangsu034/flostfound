@@ -197,6 +197,14 @@
                                 </label>
                             </div>
                             <div id="image-preview" class="grid grid-cols-3 gap-2 mt-4"></div>
+                            
+                            <!-- AI Assistant Button -->
+                            <div class="mt-4 hidden" id="ai-scan-container">
+                                <button type="button" id="aiScanBtn" onclick="scanWithAI()" class="w-full text-orange-600 bg-orange-50 hover:bg-orange-100 border border-orange-200 focus:ring-4 focus:outline-none focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition flex items-center justify-center shadow-sm">
+                                    <i class="fas fa-magic mr-2"></i> Trợ lý AI: Tự động điền thông tin từ ảnh
+                                </button>
+                                <p id="aiScanMsg" class="hidden text-xs text-center mt-2"></p>
+                            </div>
                         </div>
 
                         <!-- Contact -->
@@ -400,11 +408,23 @@
             }
             reader.readAsDataURL(file);
         });
+        
+        // Toggle AI button
+        if (selectedFiles.length > 0) {
+            document.getElementById('ai-scan-container').classList.remove('hidden');
+        }
     }
 
     function removeImage(btn, fileName) {
         btn.closest('div').remove();
         selectedFiles = selectedFiles.filter(f => f.name !== fileName);
+        
+        // Toggle AI button
+        if (selectedFiles.length === 0) {
+            document.getElementById('ai-scan-container').classList.add('hidden');
+            const aiMsg = document.getElementById('aiScanMsg');
+            if (aiMsg) aiMsg.classList.add('hidden');
+        }
     }
 
     function clearErrors() {
@@ -637,8 +657,111 @@
                 btn.disabled = false;
                 btnText.textContent = 'Đăng tin ngay';
                 btnIcon.classList.remove('hidden');
+                btnIcon.classList.remove('hidden');
                 btnLoading.classList.add('hidden');
             });
+    }
+
+
+    // AI Scan Logic
+    function scanWithAI() {
+        if (selectedFiles.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Chưa có ảnh',
+                text: "Vui lòng tải lên ít nhất 1 hình ảnh để AI có thể phân tích.",
+                confirmButtonColor: '#ea580c'
+            });
+            return;
+        }
+
+        const file = selectedFiles[0]; // Scan the first image
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const aiBtn = document.getElementById('aiScanBtn');
+        const aiMsg = document.getElementById('aiScanMsg');
+
+        // Loading state
+        aiBtn.disabled = true;
+        aiBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> AI đang phân tích ảnh...';
+        aiMsg.classList.add('hidden');
+
+        fetch('{{ url_for("posts_create.ai_scan_image") }}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(res => {
+            aiBtn.disabled = false;
+            aiBtn.innerHTML = '<i class="fas fa-magic mr-2"></i> Quét lại bằng AI';
+
+            if (res.success && res.data) {
+                const data = res.data;
+                
+                // Auto fill Title
+                if (data.title) {
+                    const titleEl = document.getElementById('title');
+                    titleEl.value = data.title;
+                    titleEl.focus(); titleEl.blur(); // Trigger floating label properly
+                }
+                
+                // Auto fill Category (checkboxes) - supports array of categories
+                const aiCategories = data.categories || (data.category ? [data.category] : []);
+                if (aiCategories.length > 0) {
+                    // First uncheck all category checkboxes
+                    document.querySelectorAll('input[name="category"]').forEach(cb => cb.checked = false);
+                    
+                    const allCats = document.querySelectorAll('input[name="category"]');
+                    let anyFound = false;
+                    
+                    aiCategories.forEach(cat => {
+                        allCats.forEach(cb => {
+                            if (cb.value === cat) {
+                                cb.checked = true;
+                                anyFound = true;
+                            }
+                        });
+                    });
+                    
+                    // If none matched, select "Khác"
+                    if (!anyFound) {
+                        allCats.forEach(cb => {
+                            if (cb.value === 'Khác') cb.checked = true;
+                        });
+                    }
+                    if (typeof triggerMatchSearch === 'function') triggerMatchSearch();
+                }
+                
+                // Auto fill description
+                if (data.description) {
+                    const descEl = document.getElementById('description');
+                    descEl.value = data.description;
+                    descEl.focus(); descEl.blur();
+                }
+
+                // Show success message
+                aiMsg.innerHTML = "✨ <strong>Tuyệt vời!</strong> Trợ lý AI đã điền xong thông tin cho bạn.";
+                aiMsg.className = "text-xs text-center mt-2 text-green-600 font-medium block";
+                
+                // Verify errors to hide them
+                clearErrors();
+            } else {
+                aiMsg.innerHTML = "❌ " + (res.message || "Bạn ơi, AI gặp khó khăn khi phân tích ảnh này. Vui lòng tự nhập tay nhé.");
+                aiMsg.className = "text-xs text-center mt-2 text-red-500 font-medium block";
+            }
+        })
+        .catch(error => {
+            console.error('AI Scan Error:', error);
+            aiBtn.disabled = false;
+            aiBtn.innerHTML = '<i class="fas fa-magic mr-2"></i> Trợ lý AI: Tự động điền thông tin từ ảnh';
+            
+            aiMsg.innerHTML = "❌ Máy chủ AI đang bận hoặc có lỗi kết nối. Hãy thử lại.";
+            aiMsg.className = "text-xs text-center mt-2 text-red-500 font-medium block";
+        });
     }
 
     // Smart Matching Logic
@@ -706,5 +829,6 @@
                 console.error("[Match] Error matching:", err);
             });
         }, 800);
+
     }
 </script>

@@ -98,17 +98,23 @@ def api_search_match():
     item_type = data.get('item_type', '').strip()
     category = data.get('category', '').strip()
 
-    if not title or not item_type or not category:
+    if not title or not item_type:
         return jsonify({"success": True, "matches": []})
 
     opposite_type = 'Found' if item_type == 'Lost' else 'Lost'
     
-    # Get candidates of opposite type and same category that are Open
-    candidates = Item.query.filter_by(
-        item_type=opposite_type, 
-        status='Open',
-        category=category
-    ).all()
+    # Get candidates of opposite type that are Open
+    # Use LIKE for category matching since categories can be comma-joined
+    query = Item.query.filter_by(item_type=opposite_type, status='Open')
+    
+    if category:
+        # Match any of the selected categories
+        cat_list = [c.strip() for c in category.split(',')]
+        from sqlalchemy import or_
+        cat_filters = [Item.category.contains(c) for c in cat_list]
+        query = query.filter(or_(*cat_filters))
+    
+    candidates = query.all()
 
     if not candidates:
         return jsonify({"success": True, "matches": []})
@@ -128,8 +134,8 @@ def api_search_match():
         matches = []
         for idx in top_indices:
             sim = float(cosine_sims[idx])
-            # Strict threshold 50% - 80%
-            if 0.5 <= sim <= 0.8:
+            # Show matches with >= 15% similarity
+            if sim >= 0.15:
                 c = candidates[idx]
                 
                 # Determine primary image

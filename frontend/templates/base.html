@@ -791,12 +791,30 @@
           else if (n.action_type === 'system') iconHtml = `<div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 shrink-0"><i class="fas fa-info-circle text-lg"></i></div>`;
           else iconHtml = `<div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 shrink-0"><i class="fas fa-bell text-lg"></i></div>`;
 
+          // Action menu for tag notifications
+          let actionMenuHtml = '';
+          if (n.action_type === 'tag' && n.actor_id) {
+            actionMenuHtml = `
+              <div class="flex items-center gap-1 mt-1.5">
+                <button onclick="event.preventDefault();event.stopPropagation();notifMuteUser(${n.actor_id})" class="text-[10px] text-gray-400 hover:text-orange-600 px-1.5 py-0.5 rounded hover:bg-orange-50 transition" title="Tắt thông báo tag từ người này">
+                  <i class="fas fa-volume-mute mr-0.5"></i>Mute
+                </button>
+                <button onclick="event.preventDefault();event.stopPropagation();notifBlockUser(${n.actor_id}, '${n.actor_name}')" class="text-[10px] text-gray-400 hover:text-red-600 px-1.5 py-0.5 rounded hover:bg-red-50 transition" title="Chặn người này">
+                  <i class="fas fa-user-slash mr-0.5"></i>Chặn
+                </button>
+                <button onclick="event.preventDefault();event.stopPropagation();notifReportUser(${n.actor_id}, ${n.comment_id || 'null'})" class="text-[10px] text-gray-400 hover:text-red-600 px-1.5 py-0.5 rounded hover:bg-red-50 transition" title="Báo cáo vi phạm">
+                  <i class="fas fa-flag mr-0.5"></i>Report
+                </button>
+              </div>`;
+          }
+
           html += `
                       <a href="javascript:void(0)" onclick="readNotification(${n.id}, '${n.action_type}', ${n.item_id}, ${n.actor_id}, ${n.comment_id})" class="flex items-start gap-4 p-4 border-b border-gray-100 last:border-0 transition-colors relative ${bgClass}">
                           ${iconHtml}
                           <div class="flex-grow min-w-0 pr-6">
                               <p class="text-[14px] text-gray-800 leading-snug break-words">${n.content}</p>
                               <span class="text-[11px] text-blue-600 mt-1 block font-medium">${formatTimeAgo(n.created_at)}</span>
+                              ${actionMenuHtml}
                           </div>
                           ${dotHtml}
                       </a>
@@ -849,6 +867,66 @@
               fetchNotifications();
             }
           });
+      };
+
+      window.notifMuteUser = function (userId) {
+        fetch(`/api/users/${userId}/mute`, { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              Swal.fire({ icon: 'success', text: data.message, timer: 2000, showConfirmButton: false });
+            }
+          }).catch(() => Swal.fire({ icon: 'error', text: 'Có lỗi xảy ra', timer: 2000, showConfirmButton: false }));
+      };
+
+      window.notifBlockUser = function (userId, username) {
+        Swal.fire({
+          title: 'Chặn người dùng?',
+          text: `Bạn sẽ không nhận bất kỳ thông báo tag nào từ ${username} nữa.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#ea580c',
+          confirmButtonText: 'Chặn ngay',
+          cancelButtonText: 'Hủy'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch(`/api/users/${userId}/block`, { method: 'POST' })
+              .then(res => res.json())
+              .then(data => {
+                Swal.fire({ icon: 'success', text: data.message, timer: 2000, showConfirmButton: false });
+              });
+          }
+        });
+      };
+
+      window.notifReportUser = function (userId, commentId) {
+        Swal.fire({
+          title: 'Báo cáo vi phạm tag',
+          text: 'Tại sao bạn muốn báo cáo người dùng này?',
+          input: 'select',
+          inputOptions: {
+            'spam': 'Spam / Quấy rối',
+            'harassment': 'Nội dung phản cảm',
+            'irrelevant': 'Tag không liên quan'
+          },
+          inputPlaceholder: 'Chọn lý do',
+          showCancelButton: true,
+          confirmButtonColor: '#ea580c',
+          confirmButtonText: 'Gửi báo cáo',
+          cancelButtonText: 'Hủy'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            fetch(`/api/users/${userId}/report_tag`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason: result.value, comment_id: commentId })
+            })
+              .then(res => res.json())
+              .then(data => {
+                Swal.fire({ icon: data.success ? 'success' : 'info', text: data.message });
+              });
+          }
+        });
       };
 
       window.updateNotifBadge = function (count) {
